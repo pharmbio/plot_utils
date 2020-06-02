@@ -27,7 +27,8 @@ def plot_calibration_curve(true_labels, p_values,
                            sign_step=0.01, fig_padding=None,
                            plot_all_labels=True,
                            fig_size = (10,8),
-                           class_labels=None):
+                           class_labels=None,
+                           **kwargs):
     
     '''Create a calibration curve (Classification)
     
@@ -72,15 +73,15 @@ def plot_calibration_curve(true_labels, p_values,
     plt.plot(significances, significances, '--k')
     
     if plot_all_labels:
-        plt.plot(significances, overall_error_rates,label='overall')
+        plt.plot(significances, overall_error_rates,label='overall',**kwargs)
         for i in range(label_based_rates.shape[1]):
             label = 'label ' + str(i)
             if class_labels is not None:
                 label = class_labels[i]
-            plt.plot(significances,label_based_rates[:,i], label=str(label))
+            plt.plot(significances,label_based_rates[:,i], label=str(label),**kwargs)
         plt.legend(loc='lower right')
     else:
-        plt.plot(significances, overall_error_rates)
+        plt.plot(significances, overall_error_rates,**kwargs)
     
     plt.ylabel("Error rate")
     plt.xlabel("Significance")
