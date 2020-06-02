@@ -82,3 +82,7 @@ def plot_calibration_curve(true_labels, p_values,
     
     return error_fig
     
+
+    def plot_bubbles(true_labels, p_values, fig_size = (10,8),
+                     class_labels=['A','N'], significance_level = 0.7 ):
+        pass
