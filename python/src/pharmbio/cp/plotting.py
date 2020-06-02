@@ -24,7 +24,7 @@ __version__ = '0.0.1'
 
 def plot_calibration_curve(true_labels, p_values, 
                            sign_min=0, sign_max=1,
-                           sign_step=0.01, fig_padding=0.05,
+                           sign_step=0.01, fig_padding=None,
                            plot_all_labels=True,
                            fig_size = (10,8),
                            class_labels=None):
@@ -39,12 +39,17 @@ def plot_calibration_curve(true_labels, p_values,
         sign_min = 0
     if sign_max > 1:
         sign_max = 1
+    if sign_max < sign_min:
+        raise ValueException('sign_max < sign_min not allowed')
     if sign_step < 1e-4 or sign_step > 1:
         sign_step = 0.01
     if class_labels is not None:
         if len(class_labels) != p_values.shape[1]:
             raise ValueException('Number of class labels must be equal to number of p-values ' + 
                                  str(len(class_labels)) + " != " + str(p_values.shape[1]))
+    
+    if fig_padding is None:
+        fig_padding = (sign_max - sign_min)*0.025
     
     # Create a list with all significances 
     significances = list(np.arange(sign_min,sign_max,sign_step))
@@ -63,16 +68,16 @@ def plot_calibration_curve(true_labels, p_values,
             label_based_rates[ind] = label_based
     
     error_fig = plt.figure(figsize = fig_size)
-    plt.axis([sign_min-fig_padding, sign_max+fig_padding, 0-fig_padding, 1+fig_padding]) 
+    plt.axis([sign_min-fig_padding, sign_max+fig_padding, sign_min-fig_padding, sign_max+fig_padding]) 
     plt.plot(significances, significances, '--k')
     
     if plot_all_labels:
         plt.plot(significances, overall_error_rates,label='overall')
         for i in range(label_based_rates.shape[1]):
-            label = i
+            label = 'label ' + str(i)
             if class_labels is not None:
                 label = class_labels[i]
-            plt.plot(significances,label_based_rates[:,i], label='error rate('+str(label)+')')
+            plt.plot(significances,label_based_rates[:,i], label=str(label))
         plt.legend(loc='lower right')
     else:
         plt.plot(significances, overall_error_rates)
