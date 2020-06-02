@@ -11,7 +11,7 @@ y = np.array(['Both', 'A', 'N', 'Null', 'Both', 'A', 'N', 'Null', ])
 #z = np.array([9, 372, 391, 335, 1, 164, 2339, 1173])
 z = np.array([5000, 372, 391, 335, 1, 2500, 2500, 2500])
 
-z_scaled = np.multiply( np.divide(z,z.max()), 2500 )
+z_scaled = 2500 * z / z.max()
 
 # use the scatter function
 plt.scatter(x, y, s=z_scaled)
