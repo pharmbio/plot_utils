@@ -4,6 +4,6 @@ Repo that groups utility plotting functions for e.g. plotting of Conformal predi
 ## TODOs:
 
 Add/finish the following plots:
- - [ ] calibration plot - Staffan
- - [ ] 'area plot' with label-distributions - Staffan
+ - [x] calibration plot - Staffan
+ - [x] 'area plot' with label-distributions - Staffan
  - [ ] bubbel-plot - Jonathan
