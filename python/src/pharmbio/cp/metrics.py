@@ -22,7 +22,7 @@ def calc_error_rate(true_labels, p_values, sign):
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if (len(true_labels) != p_values.shape[0]):
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     
     total_errors = 0
     # lists containing errors/counts for each class label
@@ -54,7 +54,7 @@ def calc_single_label_preds(true_labels, p_values, sign):
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if (len(true_labels) != p_values.shape[0]):
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     
     single_labels = 0
     for i in range(0,p_values.shape[0]):
@@ -76,7 +76,7 @@ def calc_multi_label_preds(true_labels, p_values, sign):
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if (len(true_labels) != p_values.shape[0]):
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     
     multi_labels = 0
     for i in range(0,p_values.shape[0]):
@@ -97,7 +97,7 @@ def calc_OF(true_labels, p_values):
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if (len(true_labels) != p_values.shape[0]):
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     
     of_sum = 0
     for i in range(0,p_values.shape[0]):
@@ -122,7 +122,7 @@ def calc_confusion_matrix_old(true_labels, p_vals, sign, class_labels=['A','N'])
     returns -- A Pandas dataframe with conformal confusion matrix
     '''
     if len(class_labels) != 2 or p_vals.shape[1] != 2 :
-        raise ValueException('Only two classes are supported at this point in time')
+        raise ValueError('Only two classes are supported at this point in time')
 
     predictions1 = [ class_labels[0] if p0>sign and p1<sign and t==class_labels[0] else
                             class_labels[1] if p1>sign and p0<sign and t==class_labels[0] else 
@@ -164,9 +164,9 @@ def calc_confusion_matrix(true_labels, p_values, significance,
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if len(true_labels) != p_values.shape[0]:
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     if p_values.shape[1] < 2:
-        raise ValueException('Number of classes must be at least 2')
+        raise ValueError('Number of classes must be at least 2')
     
     predictions = p_values > significance
     
@@ -181,7 +181,7 @@ def calc_confusion_matrix(true_labels, p_values, significance,
     if class_labels is None:
         class_labels = list(range(n_class))
     elif len(class_labels) != n_class:
-        raise ValueException('class_labels must have the same length as the number of classes')
+        raise ValueError('class_labels must have the same length as the number of classes')
     
     # For every observed class - t
     for t in range(n_class):
