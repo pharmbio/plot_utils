@@ -1,3 +1,4 @@
 # Ignore the 'compiled' python code
 *.pyc 
 **.ipynb_checkpoints*
+*.png

@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 #import math
 import numpy as np
-from .metrics import calc_error_rate,calc_single_label_preds,calc_multi_label_preds
+from .metrics import calc_error_rate,calc_single_label_preds
+from .metrics import calc_multi_label_preds,calc_confusion_matrix
 
 
 __using_seaborn = False
@@ -22,7 +23,7 @@ __version__ = '0.0.1'
 ### CLASSIFICATION
 ####################################
 
-def __get_siginficance_values(sign_min=0,sign_max=1,sign_step=0.01):
+def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
     '''Internal function for generation of a list of significance values
     '''
     # Do some validation
