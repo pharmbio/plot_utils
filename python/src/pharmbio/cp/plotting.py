@@ -188,19 +188,14 @@ def plot_label_distribution(true_labels, p_values,
     return fig
 
 
-def plot_confusion_matrix_bubbles(true_labels=None, p_values=None, significance=0.8, class_labels=None,
-                 confusion_matrix=None,
-                 figure=None, fig_size=(10,8),
-                 bubble_size_scale_factor = 2500,
-                 **kwargs):
+def plot_confusion_matrix_bubbles(confusion_matrix,
+                                  figure=None, fig_size=(10,8),
+                                  bubble_size_scale_factor = 2500,
+                                  **kwargs):
     '''Create a Bubble plot over predicted labels at a fixed significance (Classification)
     
     Arguments:
-    true_labels -- (Optional) A list or 1D numpy array, with values 0, 1, etc for each class (*or send confusion_matrix*)
-    p_values -- (Optional) A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc. (*or send confusion_matrix*)
-    significance -- (Optional) The significance to compute a confusion matrix from (*or send confusion_matrix*)
-    class_labels -- (Optional) Class labels to use in the plot (*or send confusion_matrix*)
-    confusion_matrix -- (Optional) A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
+    confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
     figure -- (Optional) An existing matplotlib figure to plot in
     fig_size -- (Optional) Figure size, ignored if *figure* is given
     bubble_size_scale_factor -- (Optional) Scaling to be applied on the size of the bubbles, default scaling works OK for the default figure size
@@ -253,7 +248,35 @@ def plot_confusion_matrix_bubbles(true_labels=None, p_values=None, significance=
     return figure
 
 
-
-        
+def plot_heatmap(confusion_matrix, 
+                 figure=None, fig_size=(10,8), title=None,
+                 cbar_kws=None,
+                 **kwargs):
+    '''Plots the Conformal Confusion Matrix in a Heatmap (Classification)
+    
+    Arguments:
+    confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
+    figure -- (Optional) An existing matplotlib figure to plot in
+    fig_size -- (Optional) Figure size as a tuple, ignored if *figure* is given
+    title -- (Optional) An optional title that will be printed in 'x-large' font size
+    cbar_kws -- (Optional) Arguments passed to the color-bar element
+    **kwargs -- kwargs passed along to matplotlib
+    
+    '''
+    if not __using_seaborn:
+        raise RuntimeException('Seaborn is required when using this function')
+    
+    if figure is None:
+        figure = plt.figure(figsize = fig_size)
+    else:
+        plt.figure(figure.number)
+    
+    if title is not None:
+        plt.title(title, fontdict={'fontsize':'x-large'})
+    
+    ax = sns.heatmap(confusion_matrix, annot=True,cbar_kws=cbar_kws, **kwargs)
+    ax.set(xlabel='Predicted', ylabel='Observed')
+    
+    return figure
 
 
