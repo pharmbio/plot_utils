@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
-#import math
+import math
 import numpy as np
-from .metrics import calc_error_rate,calc_single_label_preds,calc_multi_label_preds
+import pandas as pd
+from .metrics import calc_error_rate,calc_single_label_preds
+from .metrics import calc_multi_label_preds,calc_confusion_matrix
 
 
 __using_seaborn = False
 # Try to import sns as they create somewhat nicer plots
 try:
-    import seaborn as sns; 
+    import seaborn as sns
     sns.set()
     print('Using Seaborn plotting defaults')
     __using_seaborn = True
@@ -15,14 +17,12 @@ except ImportError as e:
     print('Seaborn not available - using default Matplot-lib settings')
     pass 
 
-__version__ = '0.0.1'
-
 
 ####################################
 ### CLASSIFICATION
 ####################################
 
-def __get_siginficance_values(sign_min=0,sign_max=1,sign_step=0.01):
+def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
     '''Internal function for generation of a list of significance values
     '''
     # Do some validation
@@ -31,7 +31,7 @@ def __get_siginficance_values(sign_min=0,sign_max=1,sign_step=0.01):
     if sign_max > 1:
         sign_max = 1
     if sign_max < sign_min:
-        raise ValueException('sign_max < sign_min not allowed')
+        raise ValueError('sign_max < sign_min not allowed')
     if sign_step < 1e-4 or sign_step > 1:
         sign_step = 0.01
     
@@ -65,13 +65,13 @@ def plot_calibration_curve(true_labels, p_values,
     
     '''
     # Create a list with all significances 
-    significances = __get_siginficance_values(significance_min,significance_max,significance_step)
+    significances = __get_significance_values(significance_min,significance_max,significance_step)
     sign_max = significances[len(significances)-1]
     sign_min = significances[0]
     
     if class_labels is not None:
         if len(class_labels) != p_values.shape[1]:
-            raise ValueException('Number of class labels must be equal to number of p-values ' + 
+            raise ValueError('Number of class labels must be equal to number of p-values ' + 
                                  str(len(class_labels)) + " != " + str(p_values.shape[1]))
     
     if fig_padding is None:
@@ -115,7 +115,7 @@ def plot_calibration_curve(true_labels, p_values,
 
 
 def plot_label_distribution(true_labels, p_values, 
-                            figure = None, fig_size = (10,8),
+                            figure=None, fig_size=(10,8),
                             significance_min=0, significance_max=1,
                             significance_step=0.01,
                             single_label_color='green', 
@@ -140,7 +140,7 @@ def plot_label_distribution(true_labels, p_values,
     **kwargs -- kwargs passed along to matplot-lib
     '''
     # Create a list with all significances 
-    significances = __get_siginficance_values(significance_min,significance_max,significance_step)
+    significances = __get_significance_values(significance_min,significance_max,significance_step)
     sign_max = significances[len(significances)-1]
     sign_min = significances[0]
     
@@ -185,7 +185,96 @@ def plot_label_distribution(true_labels, p_values,
     
     return fig
 
-    def plot_bubbles(true_labels, p_values, fig_size = (10,8),
-                    class_labels=['A','N'], significance_level = 0.7 ):
-        pass
+
+def plot_confusion_matrix_bubbles(confusion_matrix,
+                                  figure=None, fig_size=(10,8),
+                                  bubble_size_scale_factor = 2500,
+                                  **kwargs):
+    '''Create a Bubble plot over predicted labels at a fixed significance (Classification)
     
+    Arguments:
+    confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
+    figure -- (Optional) An existing matplotlib figure to plot in
+    fig_size -- (Optional) Figure size, ignored if *figure* is given
+    bubble_size_scale_factor -- (Optional) Scaling to be applied on the size of the bubbles, default scaling works OK for the default figure size
+    **kwargs -- kwargs passed along to matplot-lib
+    '''
+    # Make sure CM exists
+    if confusion_matrix is None:
+        # We need to calculate the CM
+        if true_labels is None or p_values is None or significance is None:
+            raise TypeError('Either a precomputed confusion matrix or {labels,p_values,significance} must be sent')
+        if class_labels is not None:
+            confusion_matrix = calc_confusion_matrix(true_labels, p_values,significance, class_labels=class_labels)
+        else:
+            confusion_matrix = calc_confusion_matrix(true_labels, p_values,significance)
+    
+    if not isinstance(confusion_matrix, pd.DataFrame):
+        raise TypeError('argument confusion_matrix must be a DataFrame - otherwise give labels and p-values so it can be generated')
+
+    # Make sure figure is set
+    if figure is None:
+        figure = plt.figure(figsize = fig_size)
+    else:
+        plt.figure(fig.number)
+    
+    x_coords = []
+    y_coords = []
+    sizes = confusion_matrix.to_numpy().ravel(order='F')
+    n_rows = confusion_matrix.shape[0]
+    for x in confusion_matrix.columns:
+        x_coords.extend([x]*n_rows)
+        y_coords.extend(confusion_matrix.index)
+    
+    # Convert the x and y coordinates to strings
+    x_coords = np.array(x_coords, dtype=object).astype(str)
+    y_coords = np.array(y_coords, dtype=object).astype(str)
+    sizes_scaled = bubble_size_scale_factor * sizes / sizes.max()
+    
+    plt.scatter(x_coords, y_coords, s=sizes_scaled,**kwargs)
+    plt.margins(.3)
+    plt.xlabel("Observed")
+    plt.ylabel("Predicted")
+    plt.gca().invert_yaxis()
+
+    for xi, yi, zi, z_si in zip(x_coords, y_coords, sizes, sizes_scaled):
+        if isinstance(zi, float):
+            zi = round(zi,2)
+        plt.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
+                 textcoords="offset points", ha="left", va="center")
+    
+    return figure
+
+
+def plot_heatmap(confusion_matrix, 
+                 figure=None, fig_size=(10,8), title=None,
+                 cbar_kws=None,
+                 **kwargs):
+    '''Plots the Conformal Confusion Matrix in a Heatmap (Classification)
+    
+    Arguments:
+    confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
+    figure -- (Optional) An existing matplotlib figure to plot in
+    fig_size -- (Optional) Figure size as a tuple, ignored if *figure* is given
+    title -- (Optional) An optional title that will be printed in 'x-large' font size
+    cbar_kws -- (Optional) Arguments passed to the color-bar element
+    **kwargs -- kwargs passed along to matplotlib
+    
+    '''
+    if not __using_seaborn:
+        raise RuntimeException('Seaborn is required when using this function')
+    
+    if figure is None:
+        figure = plt.figure(figsize = fig_size)
+    else:
+        plt.figure(figure.number)
+    
+    if title is not None:
+        plt.title(title, fontdict={'fontsize':'x-large'})
+    
+    ax = sns.heatmap(confusion_matrix, annot=True,cbar_kws=cbar_kws, **kwargs)
+    ax.set(xlabel='Predicted', ylabel='Observed')
+    
+    return figure
+
+

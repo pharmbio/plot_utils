@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 
-__version__ = '0.0.1'
-
 ####################################
 ### CLASSIFICATION
 ####################################
@@ -22,7 +20,7 @@ def calc_error_rate(true_labels, p_values, sign):
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if (len(true_labels) != p_values.shape[0]):
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     
     total_errors = 0
     # lists containing errors/counts for each class label
@@ -54,7 +52,7 @@ def calc_single_label_preds(true_labels, p_values, sign):
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if (len(true_labels) != p_values.shape[0]):
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     
     single_labels = 0
     for i in range(0,p_values.shape[0]):
@@ -76,7 +74,7 @@ def calc_multi_label_preds(true_labels, p_values, sign):
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if (len(true_labels) != p_values.shape[0]):
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     
     multi_labels = 0
     for i in range(0,p_values.shape[0]):
@@ -97,7 +95,7 @@ def calc_OF(true_labels, p_values):
         raise TypeError('p_values argument must be a numpy ndarray')
     
     if (len(true_labels) != p_values.shape[0]):
-        raise ValueException('arguments true_labels and p_values must have the same length')
+        raise ValueError('arguments true_labels and p_values must have the same length')
     
     of_sum = 0
     for i in range(0,p_values.shape[0]):
@@ -109,7 +107,7 @@ def calc_OF(true_labels, p_values):
     
     return of_sum / len(true_labels)
     
-def calc_confusion_matrix(true_labels, p_vals, sign, class_labels=['A','N']):
+def calc_confusion_matrix_old(true_labels, p_vals, sign, class_labels=['A','N']):
     ''' Calculates conformal confusion matrix with number of predictions for each class and number of both and none. 
     Only supports 2 classes at the moment.
 
@@ -122,7 +120,7 @@ def calc_confusion_matrix(true_labels, p_vals, sign, class_labels=['A','N']):
     returns -- A Pandas dataframe with conformal confusion matrix
     '''
     if len(class_labels) != 2 or p_vals.shape[1] != 2 :
-        raise ValueException('Only two classes are supported at this point in time')
+        raise ValueError('Only two classes are supported at this point in time')
 
     predictions1 = [ class_labels[0] if p0>sign and p1<sign and t==class_labels[0] else
                             class_labels[1] if p1>sign and p0<sign and t==class_labels[0] else 
@@ -147,7 +145,87 @@ def calc_confusion_matrix(true_labels, p_vals, sign, class_labels=['A','N']):
     df = pd.concat([df1,df2], axis=1)
     return df
 
+def calc_confusion_matrix(true_labels, p_values, significance, 
+                class_labels=None, normalize_per_class = False):
+    ''' Calculates a conformal confusion matrix with number of predictions for each class and number of both and none. 
 
+    Arguments:
+    true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
+    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class
+    significance -- The significance value to use, a value between 0 and 1
+    class_labels -- (Optional) A list with the class names
+    normalize_per_class -- (Optional) Normalizes the count so that each column sums to 1 (good when visualizing imbalanced datasets)
+    
+    returns -- A Pandas dataframe with a Conformal Confusion Matrix
+    '''
+    if not isinstance(p_values, np.ndarray):
+        raise TypeError('p_values argument must be a numpy ndarray')
+    
+    if len(true_labels) != p_values.shape[0]:
+        raise ValueError('arguments true_labels and p_values must have the same length')
+    if p_values.shape[1] < 2:
+        raise ValueError('Number of classes must be at least 2')
+    
+    predictions = p_values > significance
+    
+    n_class = p_values.shape[1]
+    
+    # We create two different 'multi-label' predictions, either including or excluding the correct label
+    if n_class == 2:
+        result_matrix = np.zeros((n_class+2, n_class))
+    else:
+        result_matrix = np.zeros((n_class+3, n_class))
+    
+    if class_labels is None:
+        class_labels = list(range(n_class))
+    elif len(class_labels) != n_class:
+        raise ValueError('class_labels must have the same length as the number of classes')
+    
+    # For every observed class - t
+    for t in range(n_class):
+        
+        # Get the predictions for this class
+        t_filter = true_labels == t
+        t_preds = predictions[t_filter]
+        
+        # For every (single) predicted label - p
+        for p in range(n_class):
+            predicted_p = [False]*n_class
+            predicted_p[p] = True
+            result_matrix[p,t] = (t_preds == predicted_p).all(axis=1).sum()
+        
+        # Empty predictions for class t
+        result_matrix[n_class,t] = ( t_preds.sum(axis=1) == 0 ).sum()
+        
+        # multi-label predictions for class t
+        t_multi_preds = t_preds.sum(axis=1) > 1
+        t_num_all_multi = t_multi_preds.sum()
+        if n_class == 2:
+            result_matrix[n_class+1,t] = t_num_all_multi
+        else:
+            # For multi-class we have two different multi-sets - correct or incorrect!
+            # first do a filter of rows that are multi-labeled then check t was predicted
+            t_num_correct_multi = (t_preds[t_multi_preds][:,t] == True).sum()
+            t_num_incorrect_multi = t_num_all_multi - t_num_correct_multi
+            
+            result_matrix[n_class+1,t] = t_num_correct_multi
+            result_matrix[n_class+2,t] = t_num_incorrect_multi
+    
+    row_labels = list(class_labels)
+    row_labels.append('Empty')
+    if n_class == 2:
+        row_labels.append('Both')
+    else:
+        row_labels.append('Correct Multi-set')
+        row_labels.append('Incorrect Multi-set')
+    
+    if normalize_per_class:
+        result_matrix = result_matrix / result_matrix.sum(axis=0)
+    else:
+        # Convert to int values!
+        result_matrix = result_matrix.astype(int)
+    
+    return pd.DataFrame(result_matrix, columns=class_labels, index = row_labels)
 
 
 
