@@ -139,6 +139,12 @@ def plot_label_distribution(true_labels, p_values,
     mark_best -- (Optional) If *True* adds a line and textbox with the significance with the largest ratio of single-label predictions
     **kwargs -- kwargs passed along to matplot-lib
     '''
+    # Set colors if we have seaborn and no colors are specified
+    if __using_seaborn :
+        p = sns.color_palette()
+        single_label_color=p[2]
+        multi_label_color=p[3] 
+
     # Create a list with all significances 
     significances = __get_significance_values(significance_min,significance_max,significance_step)
     sign_max = significances[len(significances)-1]
@@ -231,7 +237,12 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     y_coords = np.array(y_coords, dtype=object).astype(str)
     sizes_scaled = bubble_size_scale_factor * sizes / sizes.max()
     
-    plt.scatter(x_coords, y_coords, s=sizes_scaled,**kwargs)
+    
+    if __using_seaborn and len(x_coords)==8:
+        p = sns.color_palette()
+        plt.scatter(x_coords, y_coords, c=[p[2], p[2], "white", p[3], p[2], p[2],"white", p[3]], s=sizes_scaled, edgecolors='black', **kwargs)
+    else:
+        plt.scatter(x_coords, y_coords, s=sizes_scaled,**kwargs)
     plt.margins(.3)
     plt.xlabel("Observed")
     plt.ylabel("Predicted")
