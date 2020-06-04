@@ -17,8 +17,6 @@ except ImportError as e:
     print('Seaborn not available - using default Matplot-lib settings')
     pass 
 
-__version__ = '0.0.1'
-
 
 ####################################
 ### CLASSIFICATION
