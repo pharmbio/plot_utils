@@ -3,14 +3,37 @@ import pandas as pd
 from collections import Counter
 
 ####################################
+### UTILS
+####################################
+
+def __convert_to_1D_or_raise_error(labels):
+    error_obj = TypeError('labels argument must be either a list or numpy 1D array')
+    if isinstance(labels, list):
+        return labels
+    elif isinstance(labels, np.ndarray):
+        # Make sure the shape is correct
+        if len(labels.shape) == 1:
+            # 1D numpy - correct!
+            return labels
+        elif labels.shape[1] > 1:
+            raise error_obj
+        else:
+            # convert to 1D array
+            return np.squeeze(labels)
+    else:
+        raise error_obj
+   
+
+####################################
 ### CLASSIFICATION
 ####################################
+
 
 def calc_error_rate(true_labels, p_values, sign):
     '''Calculate the error rate (classification)
     
     Arguments:
-    true_labels -- A 1D numpy array, with values 0, 1, etc for each class
+    true_labels -- A 1D numpy array, with values 0, 1, etc for each class. note that dtype must be integer!
     p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
     sign -- the significance the metric should be calculated for
     
@@ -22,6 +45,8 @@ def calc_error_rate(true_labels, p_values, sign):
     if (len(true_labels) != p_values.shape[0]):
         raise ValueError('arguments true_labels and p_values must have the same length')
     
+    true_labels = __convert_to_1D_or_raise_error(true_labels)
+
     total_errors = 0
     # lists containing errors/counts for each class label
     label_wise_errors = [0] * p_values.shape[1]
@@ -29,6 +54,7 @@ def calc_error_rate(true_labels, p_values, sign):
     
     for test_ex in range(0,p_values.shape[0]):
         ex_value = true_labels[test_ex]
+        #print(ex_value)
         if p_values[test_ex, ex_value] < sign:
             total_errors += 1
             label_wise_errors[ex_value] += 1
@@ -53,6 +79,8 @@ def calc_single_label_preds(true_labels, p_values, sign):
     
     if (len(true_labels) != p_values.shape[0]):
         raise ValueError('arguments true_labels and p_values must have the same length')
+
+    true_labels = __convert_to_1D_or_raise_error(true_labels)
     
     single_labels = 0
     for i in range(0,p_values.shape[0]):
@@ -75,6 +103,8 @@ def calc_multi_label_preds(true_labels, p_values, sign):
     
     if (len(true_labels) != p_values.shape[0]):
         raise ValueError('arguments true_labels and p_values must have the same length')
+
+    true_labels = __convert_to_1D_or_raise_error(true_labels)
     
     multi_labels = 0
     for i in range(0,p_values.shape[0]):
@@ -97,6 +127,8 @@ def calc_OF(true_labels, p_values):
     if (len(true_labels) != p_values.shape[0]):
         raise ValueError('arguments true_labels and p_values must have the same length')
     
+    true_labels = __convert_to_1D_or_raise_error(true_labels)
+
     of_sum = 0
     for i in range(0,p_values.shape[0]):
         # Mask the p-value of the true label
@@ -165,10 +197,13 @@ def calc_confusion_matrix(true_labels, p_values, significance,
         raise ValueError('arguments true_labels and p_values must have the same length')
     if p_values.shape[1] < 2:
         raise ValueError('Number of classes must be at least 2')
+
+    true_labels = __convert_to_1D_or_raise_error(true_labels)
     
     predictions = p_values > significance
     
     n_class = p_values.shape[1]
+    print("NUMBER OF CLASSES: " + str(n_class))
     
     # We create two different 'multi-label' predictions, either including or excluding the correct label
     if n_class == 2:
