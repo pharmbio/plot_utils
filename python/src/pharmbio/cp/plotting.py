@@ -41,11 +41,12 @@ def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
     return significances
 
 def plot_calibration_curve(true_labels, p_values, 
-                           figure = None, fig_size = (10,8),
+                           ax = None, fig_size = (10,8),
                            significance_min=0, significance_max=1,
                            significance_step=0.01, fig_padding=None,
                            plot_all_labels=True,
                            class_labels=None,
+                           title=None,
                            **kwargs):
     
     '''Create a calibration curve (Classification)
@@ -53,8 +54,8 @@ def plot_calibration_curve(true_labels, p_values,
     Arguments:
     true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
     p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    figure -- (Optional) An existing matplotlib figure to plot in
-    fig_size -- (Optional) Figure size, ignored if *figure* is given
+    ax -- (Optional) An existing matplotlib Axes to plot in
+    fig_size -- (Optional) Figure size, ignored if *ax* is given
     significance_min -- (Optional) The smallest significance level to include
     significance_max -- (Optional) The largest significance level to include
     significance_step -- (Optional) The spacing between calculated values
@@ -88,34 +89,38 @@ def plot_calibration_curve(true_labels, p_values,
             # sets all values in a row
             label_based_rates[ind] = label_based
     
-    if figure is None:
+    if ax is None:
+        # No current axes, create a new Figure
         error_fig = plt.figure(figsize = fig_size)
+        # Add an axes spanning the entire Figure
+        ax = error_fig.add_axes([0,0,1,1])
     else:
-        error_fig = figure
-        plt.figure(error_fig.number)
-    
-    plt.axis([sign_min-fig_padding, sign_max+fig_padding, sign_min-fig_padding, sign_max+fig_padding]) 
-    plt.plot(significances, significances, '--k')
+        error_fig = ax.get_figure()
+
+    ax.axis([sign_min-fig_padding, sign_max+fig_padding, sign_min-fig_padding, sign_max+fig_padding]) 
+    ax.plot(significances, significances, '--k')
     
     if plot_all_labels:
-        plt.plot(significances, overall_error_rates,label='overall',**kwargs)
+        ax.plot(significances, overall_error_rates,label='Overall',**kwargs)
         for i in range(label_based_rates.shape[1]):
             label = 'label ' + str(i)
             if class_labels is not None:
                 label = class_labels[i]
-            plt.plot(significances,label_based_rates[:,i], label=str(label),**kwargs)
-        plt.legend(loc='lower right')
+            ax.plot(significances,label_based_rates[:,i], label=str(label),**kwargs)
+        ax.legend(loc='lower right')
     else:
-        plt.plot(significances, overall_error_rates,**kwargs)
+        ax.plot(significances, overall_error_rates,**kwargs)
     
-    plt.ylabel("Error rate")
-    plt.xlabel("Significance")
+    ax.set_ylabel("Error rate")
+    ax.set_xlabel("Significance")
+    if title is not None:
+        ax.set_title(title, {'fontsize': 'x-large'})
     
     return error_fig
 
 
 def plot_label_distribution(true_labels, p_values, 
-                            figure=None, fig_size=(10,8),
+                            ax=None, fig_size=(10,8),
                             significance_min=0, significance_max=1,
                             significance_step=0.01,
                             single_label_color='green', 
@@ -128,8 +133,8 @@ def plot_label_distribution(true_labels, p_values,
     Arguments:
     true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
     p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    figure -- (Optional) An existing matplotlib figure to plot in
-    fig_size -- (Optional) Figure size, ignored if *figure* is given
+    ax -- (Optional) An existing matplotlib Axes to plot in
+    fig_size -- (Optional) Figure size, ignored if *ax* is given
     significance_min -- (Optional) The smallest significance level to include
     significance_max -- (Optional) The largest significance level to include
     significance_step -- (Optional) The spacing between calculated values
@@ -168,40 +173,42 @@ def plot_label_distribution(true_labels, p_values,
     
     y = [s_label, m_label, empty_label]
     
-    if figure is None:
+    if ax is None:
+        # No current axes, create a new Figure
         fig = plt.figure(figsize = fig_size)
+        # Add an axes spanning the entire Figure
+        ax = fig.add_axes([0,0,1,1])
     else:
-        fig = figure
-        plt.figure(fig.number)
+        fig = ax.get_figure()
     
-    plt.axis([sign_min,sign_max,0,1])
-    plt.stackplot(significances,y,
+    ax.axis([sign_min,sign_max,0,1])
+    ax.stackplot(significances,y,
                   labels=['Single-label predictions','Multi-label predictions','Empty predictions'], 
                   colors=[single_label_color,multi_label_color,empty_label_color],**kwargs)
     
     if mark_best:
-        plt.plot([best_sign,best_sign],[0,1],'--k')
+        ax.plot([best_sign,best_sign],[0,1],'--k')
         props = dict(boxstyle='round', facecolor='white', alpha=0.75)
-        plt.text(best_sign+0.02, 0.1, str(best_sign), bbox=props)
+        ax.text(best_sign+0.02, 0.1, str(best_sign), bbox=props)
     
-    plt.legend()
+    ax.legend()
     
-    plt.ylabel("Label distribution")
-    plt.xlabel("Significance")
+    ax.set_ylabel("Label distribution")
+    ax.set_xlabel("Significance")
     
     return fig
 
 
 def plot_confusion_matrix_bubbles(confusion_matrix,
-                                  figure=None, fig_size=(10,8),
+                                  ax=None, fig_size=(10,8),
                                   bubble_size_scale_factor = 2500,
                                   **kwargs):
     '''Create a Bubble plot over predicted labels at a fixed significance (Classification)
     
     Arguments:
     confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
-    figure -- (Optional) An existing matplotlib figure to plot in
-    fig_size -- (Optional) Figure size, ignored if *figure* is given
+    ax -- (Optional) An existing matplotlib Axes to plot in
+    fig_size -- (Optional) Figure size, ignored if *ax* is given
     bubble_size_scale_factor -- (Optional) Scaling to be applied on the size of the bubbles, default scaling works OK for the default figure size
     **kwargs -- kwargs passed along to matplot-lib
     '''
@@ -218,11 +225,14 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     if not isinstance(confusion_matrix, pd.DataFrame):
         raise TypeError('argument confusion_matrix must be a DataFrame - otherwise give labels and p-values so it can be generated')
 
-    # Make sure figure is set
-    if figure is None:
-        figure = plt.figure(figsize = fig_size)
+    # Create Figure and Axes if not given
+    if ax is None:
+        # No current axes, create a new Figure
+        fig = plt.figure(figsize = fig_size)
+        # Add an axes spanning the entire Figure
+        ax = fig.add_axes([0,0,1,1])
     else:
-        plt.figure(fig.number)
+        fig = ax.get_figure()
     
     x_coords = []
     y_coords = []
@@ -240,33 +250,33 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     
     if __using_seaborn and len(x_coords)==8:
         p = sns.color_palette()
-        plt.scatter(x_coords, y_coords, c=[p[2], p[2], "white", p[3], p[2], p[2],"white", p[3]], s=sizes_scaled, edgecolors='black', **kwargs)
+        ax.scatter(x_coords, y_coords, c=[p[2], p[2], "white", p[3], p[2], p[2],"white", p[3]], s=sizes_scaled, edgecolors='black', **kwargs)
     else:
-        plt.scatter(x_coords, y_coords, s=sizes_scaled,**kwargs)
-    plt.margins(.3)
-    plt.xlabel("Observed")
-    plt.ylabel("Predicted")
-    plt.gca().invert_yaxis()
+        ax.scatter(x_coords, y_coords, s=sizes_scaled,**kwargs)
+    ax.margins(.3)
+    ax.set_xlabel("Observed")
+    ax.set_ylabel("Predicted")
+    ax.invert_yaxis()
 
     for xi, yi, zi, z_si in zip(x_coords, y_coords, sizes, sizes_scaled):
         if isinstance(zi, float):
             zi = round(zi,2)
-        plt.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
+        ax.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
                  textcoords="offset points", ha="left", va="center")
     
-    return figure
+    return fig
 
 
 def plot_heatmap(confusion_matrix, 
-                 figure=None, fig_size=(10,8), title=None,
+                 ax=None, fig_size=(10,8), title=None,
                  cbar_kws=None,
                  **kwargs):
     '''Plots the Conformal Confusion Matrix in a Heatmap (Classification)
     
     Arguments:
     confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
-    figure -- (Optional) An existing matplotlib figure to plot in
-    fig_size -- (Optional) Figure size as a tuple, ignored if *figure* is given
+    ax -- (Optional) An existing matplotlib Axes to plot in
+    fig_size -- (Optional) Figure size as a tuple, ignored if *ax* is given
     title -- (Optional) An optional title that will be printed in 'x-large' font size
     cbar_kws -- (Optional) Arguments passed to the color-bar element
     **kwargs -- kwargs passed along to matplotlib
@@ -275,17 +285,20 @@ def plot_heatmap(confusion_matrix,
     if not __using_seaborn:
         raise RuntimeException('Seaborn is required when using this function')
     
-    if figure is None:
-        figure = plt.figure(figsize = fig_size)
+    if ax is None:
+        # No current axes, create a new Figure
+        fig = plt.figure(figsize = fig_size)
+        # Add an axes spanning the entire Figure
+        ax = fig.add_axes([0,0,1,1])
     else:
-        plt.figure(figure.number)
+        fig = ax.get_figure()
     
     if title is not None:
-        plt.title(title, fontdict={'fontsize':'x-large'})
+        ax.set_title(title, fontdict={'fontsize':'x-large'})
     
-    ax = sns.heatmap(confusion_matrix, annot=True,cbar_kws=cbar_kws, **kwargs)
+    ax = sns.heatmap(confusion_matrix, ax=ax, annot=True,cbar_kws=cbar_kws, **kwargs)
     ax.set(xlabel='Predicted', ylabel='Observed')
     
-    return figure
+    return fig
 
 
