@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 
+
+__default_significance = 0.8
+
 ####################################
 ### UTILS
 ####################################
@@ -9,24 +12,24 @@ from collections import Counter
 def __convert_to_1D_or_raise_error(labels):
     error_obj = TypeError('labels argument must be either a list or numpy 1D array')
     if isinstance(labels, list):
-        return labels
+        return [round(x) for x in labels]
     elif isinstance(labels, np.ndarray):
         # Make sure the shape is correct
         if len(labels.shape) == 1:
             # 1D numpy - correct!
-            return labels
+            return labels.astype(int)
         elif labels.shape[1] > 1:
             raise error_obj
         else:
             # convert to 1D array
-            return np.squeeze(labels)
+            return np.squeeze(labels).astype(int)
     else:
         raise error_obj
    
 
-####################################
-### CLASSIFICATION
-####################################
+######################################
+### CLASSIFICATION - OBSERVED METRICS
+######################################
 
 
 def calc_error_rate(true_labels, p_values, sign):
@@ -203,7 +206,6 @@ def calc_confusion_matrix(true_labels, p_values, significance,
     predictions = p_values > significance
     
     n_class = p_values.shape[1]
-    print("NUMBER OF CLASSES: " + str(n_class))
     
     # We create two different 'multi-label' predictions, either including or excluding the correct label
     if n_class == 2:
@@ -262,7 +264,67 @@ def calc_confusion_matrix(true_labels, p_values, significance,
     
     return pd.DataFrame(result_matrix, columns=class_labels, index = row_labels)
 
+########################################
+### CLASSIFICATION - UNOBSERVED METRICS
+########################################
 
+def __check_p_vals_correct_type(p_values):
+    if not isinstance(p_values, np.ndarray):
+        raise TypeError('p_values must be a numpy 2D array')
+    if len(p_values.shape) < 2:
+        raise TypeError('p_values must be a numpy 2D array')
+    if p_values.shape[1] < 2:
+        raise TypeError('p_values must be a numpy 2D array')
+
+def calc_credibility(p_values):
+    '''CP Credibility - Mean of the largest p-values
+    '''
+    __check_p_vals_correct_type(p_values)
+    sorted_matrix = np.sort(p_values, axis=1)
+    return np.mean(sorted_matrix[:,-1]) # last index is the largest
+
+def calc_confidence(p_values):
+    '''CP Confidence - Mean of 1-'second largest p-value'
+    '''
+    __check_p_vals_correct_type(p_values)
+    sorted_matrix = np.sort(p_values, axis=1)
+    return np.mean(1-sorted_matrix[:,-2])
+
+def calc_s_criterion(p_values):
+    '''S criterion - Mean of the sum of all pvalues
+    '''
+    __check_p_vals_correct_type(p_values)
+    return np.mean(np.sum(p_values, axis=1))
+
+def calc_n_criterion(p_values, significance=__default_significance):
+    '''N criterion - "Number" criterion - the average number of predicted labels
+
+    Significance dependent metric
+    '''
+    __check_p_vals_correct_type(p_values)
+    return np.mean(np.sum(p_values > significance, axis=1))
+
+def calc_u_criterion(p_values):
+    '''U criterion - "Unconfidence"
+
+    Smaller values are preferable
+    '''
+    __check_p_vals_correct_type(p_values)
+    sorted_matrix = np.sort(p_values, axis=1)
+    return np.mean(sorted_matrix[:,-2])
+
+def calc_f_criteria(p_values):
+    '''F criterion - average fuzziness. Average of the sum of all p-values appart from the largest one
+
+    '''
+    __check_p_vals_correct_type(p_values)
+    sorted_matrix = np.sort(p_values, axis=1)
+    if sorted_matrix.shape[1] == 2:
+        # Mean of only the smallest p-value
+        return np.mean(sorted_matrix[:,0]) 
+    else:
+        # Here we must take the sum of the values appart from the first column
+        return np.mean(np.sum(sorted_matrix[:,:-1], axis=1))
 
 ####################################
 ### REGRESSION - TODO
