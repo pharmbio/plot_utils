@@ -99,6 +99,76 @@ class TestConfusionMatrix(unittest.TestCase):
         ])
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
 
+class TestObservedMetrics(unittest.TestCase):
+
+    def setUp(self):
+        raw_data = np.genfromtxt('resources/transporters.p-values.csv', delimiter=';', skip_header=1)
+        self.true_labels = np.array([1 if x == 1.0 else 0 for x in raw_data[:,1]])
+        self.p_values = raw_data[:,[2,3]]
+
+        multiclass_data = np.genfromtxt('resources/multiclass.csv', delimiter=',')
+        self.m_p_values = multiclass_data[:,1:]
+        self.m_true_labels = multiclass_data[:,:1].astype(np.int)
+
+    
+    def test_error_rate(self):
+        # Taken from the values Ulf gave for this dataset
+        sign = .25
+        overall, (e0, e1) = calc_error_rate(self.true_labels, self.p_values, sign)
+        self.assertAlmostEqual(0.1845, round(overall, 4))
+        self.assertAlmostEqual(.24, round(e0,3))
+        self.assertAlmostEqual(.12, round(e1,3))
+
+        sign=.2
+        overall, (e0, e1) = calc_error_rate(self.true_labels, self.p_values, sign)
+        self.assertAlmostEqual(.1459, round(overall, 4))
+        self.assertAlmostEqual(.2, round(e0,3))
+        self.assertAlmostEqual(1-0.917, round(e1,3))
+        
+        sign=.15
+        overall, (e0, e1) = calc_error_rate(self.true_labels, self.p_values, sign)
+        self.assertAlmostEqual(.12, round(overall, 3))
+        self.assertAlmostEqual(1-.84, round(e0,3))
+        self.assertAlmostEqual(1-.926, round(e1,3))
+    
+    def test_single_label_ext(self):
+        for s in np.arange(0,1,0.1):
+            correct_s, incorrect_s = calc_single_label_preds_ext(self.true_labels, self.p_values, s)
+            all_single = calc_single_label_preds(self.p_values, s)
+            self.assertAlmostEqual(all_single, correct_s+incorrect_s)
+    
+    def test_multilabel_ext(self):
+        for s in np.arange(0,1,0.1):
+            correct_m, incorrect_m = calc_multi_label_preds_ext(self.true_labels, self.p_values, s)
+            all_m = calc_multi_label_preds(self.p_values, s)
+            self.assertAlmostEqual(all_m, correct_m+incorrect_m)
+            self.assertEqual(0, incorrect_m) # For binary - all multi-label are always correct!
+    
+    def test_multilabel_ext_3class(self):
+        for s in np.arange(0,.1,0.01):
+            correct_m, incorrect_m = calc_multi_label_preds_ext(self.m_true_labels, self.m_p_values, s)
+            all_m = calc_multi_label_preds(self.m_p_values, s)
+            self.assertAlmostEqual(all_m, correct_m+incorrect_m)
+    
+    def test_multilabel_ext_synthetic(self):
+        p = np.array([
+            [0.1,0.2,0.3,0.5],
+            [0.1,0.2,0.3,0.5],
+            [0.1,0.2,0.3,0.5],
+            [0.1,0.2,0.3,0.5],
+        ])
+        s = 0.09
+        correct_m, incorrect_m = calc_multi_label_preds_ext([3,3,3,3], p, s)
+        self.assertEqual(1, correct_m) # All predicted and all correct
+        self.assertEqual(0, incorrect_m)
+
+        s = 0.11
+        correct_m, incorrect_m = calc_multi_label_preds_ext([0,0,0,3], p, s)
+        all_m = calc_multi_label_preds(p, s)
+        self.assertEqual( .25, correct_m)
+        self.assertEqual( .75, incorrect_m)
+        self.assertEqual(all_m, incorrect_m+correct_m)
+
 class TestUnobMetrics(unittest.TestCase):
 
     def setUp(self):
@@ -122,6 +192,18 @@ class TestUnobMetrics(unittest.TestCase):
             [0.45, 0.03, 0.8, 0.1],
             [0.65, 0.15, 0.05, 0.5]
         ])
+        # Ulfs real-life data
+        raw_data = np.genfromtxt('resources/transporters.p-values.csv', delimiter=';', skip_header=1)
+        self.p_values = raw_data[:,[2,3]]
+
+    def test_single_label_preds(self):
+        sign = 0.25
+        self.assertAlmostEqual(.974, round(calc_single_label_preds(self.p_values, sign),3))
+        sign = 0.2
+        self.assertAlmostEqual(.893, round(calc_single_label_preds(self.p_values, sign),3))
+        sign = 0.15
+        self.assertAlmostEqual(.79, round(calc_single_label_preds(self.p_values, sign),3))
+
     def test_f_criteria(self):
         self.assertAlmostEqual(mean([.05, .03, .15,.03]),calc_f_criteria(self.pvals_2))
         self.assertAlmostEqual(mean([.3, .48, .2, .79, .25]),calc_f_criteria(self.pvals_3))

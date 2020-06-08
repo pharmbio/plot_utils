@@ -12,7 +12,7 @@ __default_significance = 0.8
 def __convert_to_1D_or_raise_error(labels):
     error_obj = TypeError('labels argument must be either a list or numpy 1D array')
     if isinstance(labels, list):
-        return [round(x) for x in labels]
+        return np.array( [round(x) for x in labels] )
     elif isinstance(labels, np.ndarray):
         # Make sure the shape is correct
         if len(labels.shape) == 1:
@@ -67,15 +67,25 @@ def calc_error_rate(true_labels, p_values, sign):
     
     return (total_errors / true_labels.shape[0], label_wise_erro_rate)
 
-def calc_single_label_preds(true_labels, p_values, sign):
-    '''Calculate the fraction of single label predictions (classification)
+
+ 
+    #true_labels = __convert_to_1D_or_raise_error(true_labels)
+    # 
+    #multi_labels = 0
+    #for i in range(0,p_values.shape[0]):
+    #    if (p_values[i,:] > sign).sum() > 1:
+    #        multi_labels += 1
+    #return multi_labels / len(true_labels)
+
+def calc_single_label_preds_ext(true_labels, p_values, sign):
+    '''Calculate the fraction of single label predictions (classification), but calculating the correct and incorrect classifications
     
     Arguments:
     true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
     p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
     sign -- the significance the metric should be calculated for
     
-    returns -- The fraction of single label predictions (single value) 
+    returns -- Tuple (ratio correct single label, ratio incorrect single label) 
     '''
     if not isinstance(p_values, np.ndarray):
         raise TypeError('p_values argument must be a numpy ndarray')
@@ -84,22 +94,39 @@ def calc_single_label_preds(true_labels, p_values, sign):
         raise ValueError('arguments true_labels and p_values must have the same length')
 
     true_labels = __convert_to_1D_or_raise_error(true_labels)
-    
-    single_labels = 0
-    for i in range(0,p_values.shape[0]):
-        if (p_values[i,:] > sign).sum() == 1:
-            single_labels += 1
-    return single_labels / len(true_labels)
+    n_total = len(true_labels)
 
-def calc_multi_label_preds(true_labels, p_values, sign):
-    '''Calculate the fraction of multi-label predictions (classification)
+    predictions = p_values > sign
+    s_label_filter = np.sum(predictions, axis=1) == 1
+    s_preds = predictions[s_label_filter]
+    s_trues = true_labels[s_label_filter]
+
+    n_corr = 0
+    n_incorr = 0
+    for i in range(0, s_trues.shape[0]):
+        if s_preds[i, s_trues[i]]:
+            n_corr +=1
+        else:
+            n_incorr += 1 
+    
+    return n_corr/n_total, n_incorr/n_total
+
+
+    #single_labels = 0
+    #for i in range(0,p_values.shape[0]):
+    #    if (p_values[i,:] > sign).sum() == 1:
+    #        single_labels += 1
+    #return single_labels / len(true_labels)
+
+def calc_multi_label_preds_ext(true_labels, p_values, sign):
+    '''Calculate the fraction of multi-label predictions (classification), but calculating the correct and incorrect classifications
     
     Arguments:
     true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
     p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
     sign -- the significance the metric should be calculated for
     
-    returns -- The fraction of multi-label predictions
+    returns -- Tuple (ratio correct multi-label, ratio incorrect multi-label) 
     '''
     if not isinstance(p_values, np.ndarray):
         raise TypeError('p_values argument must be a numpy ndarray')
@@ -108,12 +135,28 @@ def calc_multi_label_preds(true_labels, p_values, sign):
         raise ValueError('arguments true_labels and p_values must have the same length')
 
     true_labels = __convert_to_1D_or_raise_error(true_labels)
+    n_total = len(true_labels)
+
+    predictions = p_values > sign
+    m_label_filter = np.sum(predictions, axis=1) > 1
+    m_preds = predictions[m_label_filter]
+    m_trues = true_labels[m_label_filter]
+
+    n_corr = 0
+    n_incorr = 0
+    for i in range(0, m_trues.shape[0]):
+        if m_preds[i, m_trues[i]]:
+            n_corr +=1
+        else:
+            n_incorr +=1 
     
-    multi_labels = 0
-    for i in range(0,p_values.shape[0]):
-        if (p_values[i,:] > sign).sum() > 1:
-            multi_labels += 1
-    return multi_labels / len(true_labels)
+    return n_corr/n_total, n_incorr/n_total
+
+    #multi_labels = 0
+    #for i in range(0,p_values.shape[0]):
+    #    if (p_values[i,:] > sign).sum() > 1:
+    #        multi_labels += 1
+    #return multi_labels / len(true_labels)
 
 def calc_OF(true_labels, p_values):
     ''' Calculates the Observed Fuzziness (significance independent)
@@ -267,6 +310,36 @@ def calc_confusion_matrix(true_labels, p_values, significance,
 ########################################
 ### CLASSIFICATION - UNOBSERVED METRICS
 ########################################
+
+def calc_single_label_preds(p_values, sign):
+    '''Calculate the fraction of single label predictions (classification)
+    
+    Arguments:
+    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
+    sign -- the significance the metric should be calculated for
+    
+    returns -- The fraction of single label predictions (single value) 
+    '''
+    if not isinstance(p_values, np.ndarray):
+        raise TypeError('p_values argument must be a numpy ndarray')
+    
+    predictions = p_values > sign
+    return np.mean(np.sum(predictions, axis=1) == 1)
+
+def calc_multi_label_preds(p_values, sign):
+    '''Calculate the fraction of multi-label predictions (classification)
+    
+    Arguments:
+    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
+    sign -- the significance the metric should be calculated for
+    
+    returns -- The fraction of multi-label predictions
+    '''
+    if not isinstance(p_values, np.ndarray):
+        raise TypeError('p_values argument must be a numpy ndarray')
+    
+    predictions = p_values > sign
+    return np.mean(np.sum(predictions, axis=1) > 1)
 
 def __check_p_vals_correct_type(p_values):
     if not isinstance(p_values, np.ndarray):

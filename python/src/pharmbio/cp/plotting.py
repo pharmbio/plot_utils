@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from .metrics import calc_error_rate,calc_single_label_preds
 from .metrics import calc_multi_label_preds,calc_confusion_matrix
+from .metrics import calc_multi_label_preds_ext,calc_single_label_preds_ext
 
 
 __using_seaborn = False
@@ -45,7 +46,7 @@ def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
         sign_step = 0.01
     
     significances = list(np.arange(sign_min,sign_max,sign_step))
-    if significances[len(significances)-1] < sign_max:
+    if significances[-1] < sign_max:
         significances.append(sign_max)
     return significances
 
@@ -138,10 +139,6 @@ def plot_calibration_curve(true_labels, p_values,
     
     return error_fig
 
-#single_label_color -- (Optional) The color to use for the area with single-label predictions
-#    multi_label_color -- (Optional) The color to use for the area with multi-label predictions
-#    empty_label_color -- (Optional) The color to use for the area with empty prediction
-
 def plot_label_distribution(true_labels, p_values, 
                             ax=None, fig_size=(10,8),
                             title=None,
@@ -164,50 +161,75 @@ def plot_label_distribution(true_labels, p_values,
     significance_min -- (Optional) The smallest significance level to include
     significance_max -- (Optional) The largest significance level to include
     significance_step -- (Optional) The spacing between calculated values
-    cm -- (Optional) A color map (list of colors) in the order: [single, multi, empty, incorrect-single, incorrect-multi] (if *display_incorrects=True* a list of at least 5 is required, otherwise 3 is sufficient)
+    cm -- (Optional) A color map (list of colors) in the order: [single, (incorrect-single), multi,(incorrect-multi), empty]  (if *display_incorrects=True* a list of at least 5 is required, otherwise 3 is sufficient)
     display_incorrects -- (Optional) Include colors for the incorrect singlelabel and incorrect multilabel predictions
     mark_best -- (Optional) If *True* adds a line and textbox with the significance with the largest ratio of single-label predictions
     **kwargs -- kwargs passed along to matplot-lib
     '''
+
     # Set colors if we have seaborn and no colors are specified
     if cm is not None:
         pal = list(cm)
+        if display_incorrects:
+            pal = pal[:5]
+        else:
+            pal = pal[:3]
     else:
-        pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color, __default_incorr_single_label_color, __default_incorr_multi_label_color]
+        if display_incorrects:
+            pal = [__default_single_label_color, __default_incorr_single_label_color, __default_multi_label_color,__default_incorr_multi_label_color, __default_empty_prediction_color]
+        else:
+            pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color]
     
     if display_incorrects:
         # 5 different fields
-        pal = pal[:5]
+        labels=['Single-label predictions','Incorrect single-label predictions','Multi-label predictions','Incorrect multi-label predictions','Empty predictions']
     else:
         # 3 fields
-        pal = pal[:3]
-    #if __using_seaborn :
-    #    p = sns.color_palette()
-    #    single_label_color=p[2]
-    #    multi_label_color=p[3] 
+        labels=['Single-label predictions','Multi-label predictions','Empty predictions']
 
     # Create a list with all significances 
     significances = __get_significance_values(significance_min,significance_max,significance_step)
-    sign_max = significances[len(significances)-1]
+    sign_max = significances[-1]
     sign_min = significances[0]
     
     # Calculate the values
     s_label = []
+    si_label = [] # Incorrects
     m_label = []
+    mi_label = [] # Incorrects
     empty_label = []
     highest_single_ratio = -1
     best_sign = -1
     for s in significances:
-        s_l = calc_single_label_preds(true_labels, p_values, s)
+        if display_incorrects:
+            s_corr, s_incorr = calc_single_label_preds_ext(true_labels, p_values,s)
+            s_l = s_corr
+            m_corr, m_incorr = calc_multi_label_preds_ext(true_labels, p_values, s)
+            # Update lists
+            s_label.append(s_corr)
+            si_label.append(s_incorr)
+            m_label.append(m_corr)
+            mi_label.append(m_incorr)
+            sum_labels = s_corr+s_incorr+m_corr+m_incorr
+        else: 
+            s_l = calc_single_label_preds(p_values, s)
+            m_l = calc_multi_label_preds(p_values,s)
+            # Update lists
+            s_label.append(s_l)
+            m_label.append(m_l)
+            sum_labels = s_l + m_l
+        
+        # Update the best significance value
         if s_l > highest_single_ratio:
             highest_single_ratio = s_l
             best_sign = s
-        m_l = calc_multi_label_preds(true_labels,p_values,s)
-        s_label.append(s_l)
-        m_label.append(m_l)
-        empty_label.append(1 - s_l - m_l)
+        # The empty labels are the remaing predictions
+        empty_label.append(1 -sum_labels)
     
-    y = [s_label, m_label, empty_label]
+    if display_incorrects:
+        y = [s_label, si_label, m_label, mi_label, empty_label]
+    else:
+        y = [s_label, m_label, empty_label]
     
     if ax is None:
         # No current axes, create a new Figure
@@ -219,7 +241,7 @@ def plot_label_distribution(true_labels, p_values,
     
     ax.axis([sign_min,sign_max,0,1])
     ax.stackplot(significances,y,
-                  labels=['Single-label predictions','Multi-label predictions','Empty predictions'], 
+                  labels=labels, 
                   colors=pal,**kwargs) #
     
     if mark_best:
@@ -329,11 +351,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     sizes_scaled = bubble_size_scale_factor * sizes / sizes.max()
     
     ax.scatter(x_coords, y_coords, s=sizes_scaled,c=colors,edgecolors='black',**kwargs)
-    #if __using_seaborn and len(x_coords)==8:
-    #    p = sns.color_palette()
-    #    ax.scatter(x_coords, y_coords, c=[p[2], p[2], "white", p[3], p[2], p[2],"white", p[3]], s=sizes_scaled, edgecolors='black', **kwargs)
-    #else:
-    #    ax.scatter(x_coords, y_coords, s=sizes_scaled,**kwargs)
+
     ax.margins(.3)
     ax.set_xlabel("Observed")
     ax.set_ylabel("Predicted")
