@@ -111,13 +111,6 @@ def calc_single_label_preds_ext(true_labels, p_values, sign):
     
     return n_corr/n_total, n_incorr/n_total
 
-
-    #single_labels = 0
-    #for i in range(0,p_values.shape[0]):
-    #    if (p_values[i,:] > sign).sum() == 1:
-    #        single_labels += 1
-    #return single_labels / len(true_labels)
-
 def calc_multi_label_preds_ext(true_labels, p_values, sign):
     '''Calculate the fraction of multi-label predictions (classification), but calculating the correct and incorrect classifications
     
@@ -184,44 +177,6 @@ def calc_OF(true_labels, p_values):
         of_sum += p_vals_masked.sum()
     
     return of_sum / len(true_labels)
-    
-def calc_confusion_matrix_old(true_labels, p_vals, sign, class_labels=['A','N']):
-    ''' Calculates conformal confusion matrix with number of predictions for each class and number of both and none. 
-    Only supports 2 classes at the moment.
-
-    Arguments:
-    true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
-    p_vals -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class
-    sign -- A value between 0 and 1 corresponding to the significance level
-    class_labels -- An array with the class names
-
-    returns -- A Pandas dataframe with conformal confusion matrix
-    '''
-    if len(class_labels) != 2 or p_vals.shape[1] != 2 :
-        raise ValueError('Only two classes are supported at this point in time')
-
-    predictions1 = [ class_labels[0] if p0>sign and p1<sign and t==class_labels[0] else
-                            class_labels[1] if p1>sign and p0<sign and t==class_labels[0] else 
-                            'none'          if p1<sign and p1<sign and t==class_labels[0] else
-                            'both'          for p0,p1,t in zip(p_vals[:,0], p_vals[:,1], true_labels) if t==class_labels[0] ]
-    predictions2 = [ class_labels[0] if p0>sign and p1<sign and t==class_labels[1] else
-                            class_labels[1] if p1>sign and p0<sign and t==class_labels[1] else 
-                            'none'          if p1<sign and p1<sign and t==class_labels[1] else
-                            'both'          for p0,p1,t in zip(p_vals[:,0], p_vals[:,1], true_labels) if t==class_labels[1] ]
-    possibleOutcomes = [class_labels[0], class_labels[1], "both", "none"]
-    dict1 = Counter(predictions1)
-    dict2 = Counter(predictions2)
-    for outcome in possibleOutcomes :
-        if not outcome in dict1:
-            dict1[outcome] = 0
-        if not outcome in dict2:
-            dict2[outcome] = 0
-    df1 = pd.DataFrame.from_dict(dict1, orient='index')
-    df1.columns=[class_labels[0]]
-    df2 = pd.DataFrame.from_dict(dict2, orient='index')
-    df2.columns=[class_labels[1]]
-    df = pd.concat([df1,df2], axis=1)
-    return df
 
 def calc_confusion_matrix(true_labels, p_values, significance, 
                 class_labels=None, normalize_per_class = False):
