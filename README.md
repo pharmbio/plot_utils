@@ -11,6 +11,7 @@ Add/finish the following plots:
  - [x] 'area plot' with label-distributions - Staffan
  - [x] bubbel-plot - Jonathan
  - [x] heatmap - Staffan
+ - [x] p0-p1 plot - Staffan
  - [ ] Add regression metrics
  - [ ] Add plots regression
 

@@ -274,41 +274,17 @@ def plot_label_distribution(true_labels, p_values,
     significance_min -- (Optional) The smallest significance level to include
     significance_max -- (Optional) The largest significance level to include
     significance_step -- (Optional) The spacing between calculated values
-    cm -- (Optional) A color map (list of colors) in the order: [single, (incorrect-single), multi,(incorrect-multi), empty]  (if *display_incorrects=True* a list of at least 5 is required, otherwise 3 is sufficient)
+    cm -- (Optional) A color map (list of colors) in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  (if *display_incorrects=True* a list of at least 5 is required, otherwise 3 is sufficient)
     display_incorrects -- (Optional) Include colors for the incorrect singlelabel and incorrect multilabel predictions
     mark_best -- (Optional) If *True* adds a line and textbox with the significance with the largest ratio of single-label predictions
     **kwargs -- kwargs passed along to matplot-lib
     '''
-    n_class = p_values.shape[1]
-    # Set colors if we have seaborn and no colors are specified
+    
+    # Set color-mapping
     if cm is not None:
         pal = list(cm)
-        if display_incorrects:
-            if n_class>2:
-                pal = pal[:5]
-            else:
-                pal = pal[:4]
-        else:
-            pal = pal[:3]
     else:
-        if display_incorrects:
-            if n_class > 2:
-                pal = [__default_single_label_color, __default_incorr_single_label_color, __default_multi_label_color,__default_incorr_multi_label_color, __default_empty_prediction_color]
-            else:
-                # No incorrect multi-labels possible
-                pal = [__default_single_label_color, __default_incorr_single_label_color, __default_multi_label_color,__default_empty_prediction_color]
-        else:
-            pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color]
-    
-    if display_incorrects:
-        # 5 different fields
-        if n_class > 2:
-            labels=['Single-label predictions','Incorrect single-label predictions','Multi-label predictions','Incorrect multi-label predictions','Empty predictions']
-        else:
-            labels=['Single-label predictions','Incorrect single-label predictions','Multi-label predictions','Empty predictions']
-    else:
-        # 3 fields
-        labels=['Single-label predictions','Multi-label predictions','Empty predictions']
+        pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color, __default_incorr_single_label_color,__default_incorr_multi_label_color]
 
     # Create a list with all significances 
     significances = __get_significance_values(significance_min,significance_max,significance_step)
@@ -324,38 +300,60 @@ def plot_label_distribution(true_labels, p_values,
     highest_single_ratio = -1
     best_sign = -1
     for s in significances:
+        s_corr, s_incorr = calc_single_label_preds_ext(true_labels, p_values,s)
+        m_corr, m_incorr = calc_multi_label_preds_ext(true_labels, p_values, s)
         if display_incorrects:
-            s_corr, s_incorr = calc_single_label_preds_ext(true_labels, p_values,s)
             s_l = s_corr
-            m_corr, m_incorr = calc_multi_label_preds_ext(true_labels, p_values, s)
-            # Update lists
-            s_label.append(s_corr)
-            si_label.append(s_incorr)
-            m_label.append(m_corr)
-            mi_label.append(m_incorr)
-            sum_labels = s_corr+s_incorr+m_corr+m_incorr
-        else: 
-            s_l = calc_single_label_preds(p_values, s)
-            m_l = calc_multi_label_preds(p_values,s)
-            # Update lists
-            s_label.append(s_l)
-            m_label.append(m_l)
-            sum_labels = s_l + m_l
+            m_l = m_corr
+        else:
+            # Here these should be summed to gain the totals
+            s_l = s_corr + s_incorr
+            m_l = m_corr + m_incorr
+        # Update lists
+        s_label.append(s_l)
+        si_label.append(s_incorr)
+        m_label.append(m_l)
+        mi_label.append(m_incorr)
+        sum_labels = s_corr+s_incorr+m_corr+m_incorr
         
         # Update the best significance value
         if s_l > highest_single_ratio:
             highest_single_ratio = s_l
             best_sign = s
         # The empty labels are the remaing predictions
-        empty_label.append(1 -sum_labels)
+        empty_label.append(1 - sum_labels)
     
-    if display_incorrects:
-        if n_class >2:
-            y = [s_label, si_label, m_label, mi_label, empty_label]
-        else:
-            y = [s_label, si_label, m_label, empty_label]
-    else:
-        y = [s_label, m_label, empty_label]
+    # Convert all to numpy arrays
+    s_label = np.array(s_label)
+    si_label = np.array(si_label)
+    m_label = np.array(m_label)
+    mi_label = np.array(mi_label)
+    empty_label = np.array(empty_label)
+    
+    ys = []
+    labels = []
+    colors = []
+
+    if not np.all(s_label == 0):
+        ys.append(s_label)
+        labels.append('Single-label')
+        colors.append(pal[0 % len(pal)])
+    if display_incorrects and not np.all(si_label == 0):
+        ys.append(si_label)
+        labels.append('Incorrect single-label')
+        colors.append(pal[3 % len(pal)])
+    if not np.all(m_label == 0):
+        ys.append(m_label)
+        labels.append('Multi-label')
+        colors.append(pal[1 % len(pal)])
+    if p_values.shape[1] > 2 and display_incorrects and not np.all(mi_label == 0):
+        ys.append(mi_label)
+        labels.append('Incorrect multi-label')
+        colors.append(pal[4 % len(pal)])
+    if not np.all(empty_label == 0):
+        ys.append(empty_label)
+        labels.append('Empty-label')
+        colors.append(pal[2 % len(pal)])
     
     if ax is None:
         # No current axes, create a new Figure
@@ -366,9 +364,9 @@ def plot_label_distribution(true_labels, p_values,
         fig = ax.get_figure()
     
     ax.axis([sign_min,sign_max,0,1])
-    ax.stackplot(significances,y,
+    ax.stackplot(significances,ys,
                   labels=labels, 
-                  colors=pal,**kwargs) #
+                  colors=colors,**kwargs) #
     
     if mark_best:
         ax.plot([best_sign,best_sign],[0,1],'--k')

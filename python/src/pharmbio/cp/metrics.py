@@ -358,6 +358,3 @@ def calc_f_criteria(p_values):
 ### REGRESSION - TODO
 ####################################
 
-def calc_error_rate_regression(true_labels, prediction_ranges):
-    # what is the best way to do this? prediction-ranges as 2D numpy array? [lower bound, upper bound] ?
-    raise NotImplementedError('TODO')
