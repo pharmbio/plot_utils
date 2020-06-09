@@ -55,6 +55,119 @@ def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
 ### CLASSIFICATION
 ####################################
 
+def plot_pvalues(true_labels, p_values, 
+                    ax = None, fig_size= (10,8),
+                    cm = None, markers = None, sizes = None,
+                    labels = None,
+                    title = None,
+                    x_label = 'p-value 0',
+                    y_label = 'p-value 1',
+                    fontargs=None,
+                    **kwargs):
+    '''
+    Plot p0 vs p1 (or others if multiclass)
+    '''
+
+    if not isinstance(p_values, np.ndarray):
+        raise TypeError('p_values must be a numpy ndarray')
+    if p_values.shape[1] != 2:
+        raise ValueError('p_values must be a (n_examples,2) shaped numpy ndarray')
+    
+    # Set the color-map
+    if cm is None:
+        pal = __default_color_map
+    else:
+        pal = list(cm)
+    # Color individual examples
+    # Find all unique labels
+    if len(pal) == 1:
+        # Single color for all
+        colors = [pal[0]]*len(true_labels)
+    else:
+        # Unique color for each example
+        colors = []
+        for ex in true_labels:
+            colors.append(pal[int(ex) % len(pal)])
+    colors = np.array(colors)
+
+    unique_labels = sorted(list(np.unique(true_labels).astype(int)))
+
+    # Verify the labels
+    if labels is not None:
+        if not isinstance(labels, list):
+            raise TypeError('labels must be a list if supplied')
+        if len(labels) != len(unique_labels):
+            raise TypeError('labels and number of classes does not match') 
+    
+    if ax is None:
+        # No current axes, create a new Figure
+        fig = plt.figure(figsize = fig_size)
+        # Add an axes spanning the entire Figure
+        ax = fig.add_axes([0,0,1,1])
+    else:
+        fig = ax.get_figure()
+    
+    # Set the markers to a list
+    if markers is None:
+        # default
+        plt_markers = [mpl.rcParams["scatter.marker"]]
+    elif not isinstance(markers, list):
+        # not a list - same marker for all
+        plt_markers = [markers]
+    else:
+        # Unique markers for all
+        plt_markers = markers
+    
+    # Set the size of the markers
+    if sizes is None:
+        plt_sizes = [mpl.rcParams['lines.markersize'] ** 2] # Default
+    elif isinstance(sizes, list):
+        plt_sizes = sizes
+    else:
+        plt_sizes = [sizes]
+    
+    # Do the plotting
+    for lab in unique_labels:
+        label_filter = np.array(true_labels == lab)
+        x = p_values[label_filter, 0]
+        y = p_values[label_filter, 1]
+        c = colors[label_filter]
+        m = plt_markers[int(lab) % len(plt_markers)]
+        s = plt_sizes[int(lab) % len(plt_sizes)] #[None if plt_sizes is None else
+        label = None
+        if labels is not None:
+            label = labels[int(lab)]
+        #if s is None:
+        #    ax.scatter(x, y, c=c, marker = m, label=label, **kwargs)
+        #else:
+        ax.scatter(x, y, s=s, c=c, marker = m, label=label, **kwargs)
+    
+    if labels is not None:
+        if fontargs is not None:
+            ax.legend(loc='upper right',**fontargs)
+        else:
+            ax.legend(loc='upper right')
+    
+    # Set some labels and title
+    if y_label is not None:
+        if fontargs is not None:
+            ax.set_ylabel(y_label,**fontargs)
+        else:
+            ax.set_ylabel(y_label)
+    if x_label is not None:
+        if fontargs is not None:
+            ax.set_xlabel(x_label,**fontargs)
+        else:
+            ax.set_xlabel(x_label)
+    if title is not None:
+        if fontargs is None:
+            ax.set_title(title, {'fontsize': 'x-large'})
+        else:
+            ax.set_title(title, **fontargs)
+
+    return fig
+
+
 def plot_calibration_curve(true_labels, p_values, 
                            ax = None, fig_size = (10,8),
                            cm = None,
@@ -166,23 +279,33 @@ def plot_label_distribution(true_labels, p_values,
     mark_best -- (Optional) If *True* adds a line and textbox with the significance with the largest ratio of single-label predictions
     **kwargs -- kwargs passed along to matplot-lib
     '''
-
+    n_class = p_values.shape[1]
     # Set colors if we have seaborn and no colors are specified
     if cm is not None:
         pal = list(cm)
         if display_incorrects:
-            pal = pal[:5]
+            if n_class>2:
+                pal = pal[:5]
+            else:
+                pal = pal[:4]
         else:
             pal = pal[:3]
     else:
         if display_incorrects:
-            pal = [__default_single_label_color, __default_incorr_single_label_color, __default_multi_label_color,__default_incorr_multi_label_color, __default_empty_prediction_color]
+            if n_class > 2:
+                pal = [__default_single_label_color, __default_incorr_single_label_color, __default_multi_label_color,__default_incorr_multi_label_color, __default_empty_prediction_color]
+            else:
+                # No incorrect multi-labels possible
+                pal = [__default_single_label_color, __default_incorr_single_label_color, __default_multi_label_color,__default_empty_prediction_color]
         else:
             pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color]
     
     if display_incorrects:
         # 5 different fields
-        labels=['Single-label predictions','Incorrect single-label predictions','Multi-label predictions','Incorrect multi-label predictions','Empty predictions']
+        if n_class > 2:
+            labels=['Single-label predictions','Incorrect single-label predictions','Multi-label predictions','Incorrect multi-label predictions','Empty predictions']
+        else:
+            labels=['Single-label predictions','Incorrect single-label predictions','Multi-label predictions','Empty predictions']
     else:
         # 3 fields
         labels=['Single-label predictions','Multi-label predictions','Empty predictions']
@@ -227,7 +350,10 @@ def plot_label_distribution(true_labels, p_values,
         empty_label.append(1 -sum_labels)
     
     if display_incorrects:
-        y = [s_label, si_label, m_label, mi_label, empty_label]
+        if n_class >2:
+            y = [s_label, si_label, m_label, mi_label, empty_label]
+        else:
+            y = [s_label, si_label, m_label, empty_label]
     else:
         y = [s_label, m_label, empty_label]
     
