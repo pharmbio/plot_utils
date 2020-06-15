@@ -232,10 +232,11 @@ def plot_calibration_curve(true_labels, p_values,
         error_fig = ax.get_figure()
 
     ax.axis([sign_min-fig_padding, sign_max+fig_padding, sign_min-fig_padding, sign_max+fig_padding]) 
-    ax.plot(significances, significances, '--k')
+    ax.plot(significances, significances, '--k', alpha=0.75)
     
     if plot_all_labels:
-        ax.plot(significances, overall_error_rates,c=pal[0], label='Overall',**kwargs)
+        # Specify a higher zorder for the overall to print it on the top (most important)
+        ax.plot(significances, overall_error_rates,c=pal[0], label='Overall',zorder=10, **kwargs)
         for i in range(label_based_rates.shape[1]):
             label = 'Label ' + str(i)
             if class_labels is not None:
