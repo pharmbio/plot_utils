@@ -60,6 +60,7 @@ def plot_pvalues(true_labels, p_values,
                     cm = None, markers = None, sizes = None,
                     labels = None,
                     title = None,
+                    order = None,
                     x_label = 'p-value 0',
                     y_label = 'p-value 1',
                     fontargs=None,
@@ -120,27 +121,84 @@ def plot_pvalues(true_labels, p_values,
     
     # Set the size of the markers
     if sizes is None:
-        plt_sizes = [mpl.rcParams['lines.markersize'] ** 2] # Default
+        plt_sizes = [None] #[mpl.rcParams['lines.markersize']] # Default
     elif isinstance(sizes, list):
         plt_sizes = sizes
     else:
         plt_sizes = [sizes]
     
     # Do the plotting
-    for lab in unique_labels:
-        label_filter = np.array(true_labels == lab)
-        x = p_values[label_filter, 0]
-        y = p_values[label_filter, 1]
-        c = colors[label_filter]
-        m = plt_markers[int(lab) % len(plt_markers)]
-        s = plt_sizes[int(lab) % len(plt_sizes)] #[None if plt_sizes is None else
-        label = None
-        if labels is not None:
-            label = labels[int(lab)]
-        #if s is None:
-        #    ax.scatter(x, y, c=c, marker = m, label=label, **kwargs)
-        #else:
-        ax.scatter(x, y, s=s, c=c, marker = m, label=label, **kwargs)
+    if order is not None and order.lower() == 'order':
+        # Use the order of the labels simply 
+        for lab in unique_labels:
+            label_filter = np.array(true_labels == lab)
+            x = p_values[label_filter, 0]
+            y = p_values[label_filter, 1]
+            c = colors[label_filter]
+            m = plt_markers[int(lab) % len(plt_markers)]
+            #if plt_sizes is None:
+            #    s = None
+            #else:
+            s = plt_sizes[int(lab) % len(plt_sizes)]
+            label = None
+            if labels is not None:
+                label = labels[int(lab)]
+            ax.scatter(x, y, s=s, c=c, marker = m, label=label, **kwargs)
+    else:
+        # Try to use a smarter apporach
+        unique_labels = np.array(unique_labels)
+        num_ul = []
+        num_lr = []
+        num_per_label = []
+        # Compute the order of classes to plot
+        for lab in unique_labels:
+            label_filter = np.array(true_labels == lab)
+            x = p_values[label_filter, 0]
+            y = p_values[label_filter, 1]
+            num_per_label.append(len(x))
+            # the number in lower-right part and upper-left
+            num_lr.append((x>y).sum())
+            num_ul.append(x.shape[0] - num_lr[-1])
+        
+        # For small datasets, normalize for size
+        if order is not None and order.lower() == 'rel':
+            num_ul = np.array(num_ul) / np.array(num_per_label)
+            num_lr = np.array(num_lr) / np.array(num_per_label)
+        
+        # Plot the upper-left section
+        ul_sorting = np.argsort(num_ul)[::-1]
+        for lab in unique_labels[ul_sorting]:
+            label_filter = np.array(true_labels == lab)
+            x = p_values[label_filter, 0]
+            y = p_values[label_filter, 1]
+            upper_left_filter = y >= x
+            x = x[upper_left_filter]
+            y = y[upper_left_filter]
+            c = colors[label_filter][upper_left_filter]
+            m = plt_markers[int(lab) % len(plt_markers)]
+            s = plt_sizes[int(lab) % len(plt_sizes)] #[None if plt_sizes is None else
+            label = None
+            if labels is not None:
+                label = labels[int(lab)]
+            ax.scatter(x, y, s=s, c=c, marker = m, label=label, **kwargs)
+
+        # Plot the lower-right section
+        lr_sorting = np.argsort(num_lr)[::-1]
+        for lab in unique_labels[lr_sorting]:
+            label_filter = np.array(true_labels == lab)
+            x = p_values[label_filter, 0]
+            y = p_values[label_filter, 1]
+            lower_right_filter = y < x
+            x = x[lower_right_filter]
+            y = y[lower_right_filter]
+            c = colors[label_filter][lower_right_filter]
+            m = plt_markers[int(lab) % len(plt_markers)]
+            s = plt_sizes[int(lab) % len(plt_sizes)] #[None if plt_sizes is None else
+            # Skip the labels in second one!
+            ax.scatter(x, y, s=s, c=c, marker = m, **kwargs)
+
+    ax.set_ylim([-.025, 1.025])
+    ax.set_xlim([-.025, 1.025])
     
     if labels is not None:
         if fontargs is not None:
