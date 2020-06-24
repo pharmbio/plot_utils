@@ -23,7 +23,7 @@ except ImportError as e:
 __default_color_map = list(mpl.rcParams['axes.prop_cycle'].by_key()['color'])
 __default_single_label_color = __default_color_map.pop(2) # green
 __default_multi_label_color = __default_color_map.pop(2) # red
-__default_empty_prediction_color = "white"
+__default_empty_prediction_color = "gainsboro"
 
 __default_incorr_single_label_color = __default_color_map.pop(2) 
 __default_incorr_multi_label_color = __default_color_map.pop(2)
