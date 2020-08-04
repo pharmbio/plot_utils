@@ -395,7 +395,7 @@ def plot_label_distribution(true_labels, p_values,
 
     if not np.all(s_label == 0):
         ys.append(s_label)
-        labels.append('Single-label')
+        labels.append('Correct single-label')
         colors.append(pal[0 % len(pal)])
     if display_incorrects and not np.all(si_label == 0):
         ys.append(si_label)
@@ -403,7 +403,10 @@ def plot_label_distribution(true_labels, p_values,
         colors.append(pal[3 % len(pal)])
     if not np.all(m_label == 0):
         ys.append(m_label)
-        labels.append('Multi-label')
+        if (p_values.shape[1] == 2):
+            labels.append('Both')
+        else:
+            labels.append('Multi-label')
         colors.append(pal[1 % len(pal)])
     if p_values.shape[1] > 2 and display_incorrects and not np.all(mi_label == 0):
         ys.append(mi_label)
@@ -411,7 +414,7 @@ def plot_label_distribution(true_labels, p_values,
         colors.append(pal[4 % len(pal)])
     if not np.all(empty_label == 0):
         ys.append(empty_label)
-        labels.append('Empty-label')
+        labels.append('Empty')
         colors.append(pal[2 % len(pal)])
     
     if ax is None:
