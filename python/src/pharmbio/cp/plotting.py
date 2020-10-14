@@ -50,13 +50,23 @@ def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
         significances.append(sign_max)
     return significances
 
+def __get_fig_and_axis(ax, fig_size = (10,8)):
+    if ax is None:
+        # No current axes, create a new Figure
+        fig = plt.figure(figsize = fig_size)
+        # Add an axes spanning the entire Figure
+        ax = fig.add_subplot(111)
+    else:
+        fig = ax.get_figure()
+    
+    return fig, ax
 
 ####################################
 ### CLASSIFICATION
 ####################################
 
 def plot_pvalues(true_labels, p_values, 
-                    ax = None, fig_size= (10,8),
+                    ax = None, fig_size = (10,8),
                     cm = None, markers = None, sizes = None,
                     labels = None,
                     title = None,
@@ -74,6 +84,8 @@ def plot_pvalues(true_labels, p_values,
     if p_values.shape[1] != 2:
         raise ValueError('p_values must be a (n_examples,2) shaped numpy ndarray')
     
+    fig, ax = __get_fig_and_axis(ax, fig_size)
+
     # Set the color-map
     if cm is None:
         pal = __default_color_map
@@ -99,14 +111,6 @@ def plot_pvalues(true_labels, p_values,
             raise TypeError('labels must be a list if supplied')
         if len(labels) != len(unique_labels):
             raise TypeError('labels and number of classes does not match') 
-    
-    if ax is None:
-        # No current axes, create a new Figure
-        fig = plt.figure(figsize = fig_size)
-        # Add an axes spanning the entire Figure
-        ax = fig.add_axes([0,0,1,1])
-    else:
-        fig = ax.get_figure()
     
     # Set the markers to a list
     if markers is None:
@@ -281,13 +285,7 @@ def plot_calibration_curve(true_labels, p_values,
             # sets all values in a row
             label_based_rates[ind] = label_based
     
-    if ax is None:
-        # No current axes, create a new Figure
-        error_fig = plt.figure(figsize = fig_size)
-        # Add an axes spanning the entire Figure
-        ax = error_fig.add_axes([0,0,1,1])
-    else:
-        error_fig = ax.get_figure()
+    error_fig, ax = __get_fig_and_axis(ax, fig_size)
 
     ax.axis([sign_min-fig_padding, sign_max+fig_padding, sign_min-fig_padding, sign_max+fig_padding]) 
     ax.plot(significances, significances, '--k', alpha=0.25, linewidth=1)
@@ -395,7 +393,10 @@ def plot_label_distribution(true_labels, p_values,
 
     if not np.all(s_label == 0):
         ys.append(s_label)
-        labels.append('Correct single-label')
+        if display_incorrects:
+            labels.append('Correct single-label')
+        else:
+            labels.append('Single-label')
         colors.append(pal[0 % len(pal)])
     if display_incorrects and not np.all(si_label == 0):
         ys.append(si_label)
@@ -417,13 +418,7 @@ def plot_label_distribution(true_labels, p_values,
         labels.append('Empty')
         colors.append(pal[2 % len(pal)])
     
-    if ax is None:
-        # No current axes, create a new Figure
-        fig = plt.figure(figsize = fig_size)
-        # Add an axes spanning the entire Figure
-        ax = fig.add_axes([0,0,1,1])
-    else:
-        fig = ax.get_figure()
+    fig, ax = __get_fig_and_axis(ax, fig_size)
     
     ax.axis([sign_min,sign_max,0,1])
     ax.stackplot(significances,ys,
@@ -479,13 +474,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
         raise TypeError('argument confusion_matrix must be a DataFrame - otherwise give labels and p-values so it can be generated')
 
     # Create Figure and Axes if not given
-    if ax is None:
-        # No current axes, create a new Figure
-        fig = plt.figure(figsize = fig_size)
-        # Add an axes spanning the entire Figure
-        ax = fig.add_axes([0,0,1,1])
-    else:
-        fig = ax.get_figure()
+    fig, ax = __get_fig_and_axis(ax, fig_size)
     
     x_coords = []
     y_coords = []
@@ -573,13 +562,7 @@ def plot_heatmap(confusion_matrix,
     if not __using_seaborn:
         raise RuntimeException('Seaborn is required when using this function')
     
-    if ax is None:
-        # No current axes, create a new Figure
-        fig = plt.figure(figsize = fig_size)
-        # Add an axes spanning the entire Figure
-        ax = fig.add_axes([0,0,1,1])
-    else:
-        fig = ax.get_figure()
+    fig, ax = __get_fig_and_axis(ax, fig_size)
     
     if title is not None:
         ax.set_title(title, fontdict={'fontsize':'x-large'})
