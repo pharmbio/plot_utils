@@ -1,5 +1,6 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import logging
 import math
 import numpy as np
 import pandas as pd
@@ -13,10 +14,10 @@ __using_seaborn = False
 try:
     import seaborn as sns
     sns.set()
-    print('Using Seaborn plotting defaults')
+    logging.debug('Using Seaborn plotting defaults')
     __using_seaborn = True
 except ImportError as e:
-    print('Seaborn not available - using Matplotlib defaults')
+    logging.debug('Seaborn not available - using Matplotlib defaults')
     pass 
 
 # Set some defaults that will be used amongst the plotting functions
@@ -34,7 +35,12 @@ __default_incorr_multi_label_color = __default_color_map.pop(2)
 
 def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
     '''Internal function for generation of a list of significance values
+    
+    Returns
+    -------
+    list of float
     '''
+    
     # Do some validation
     if sign_min<0:
         sign_min = 0
@@ -51,6 +57,13 @@ def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
     return significances
 
 def __get_fig_and_axis(ax, fig_size = (10,8)):
+    '''Internal function for instantiating a Figure / axes object
+    
+    Returns
+    -------
+    tuple (Figure, axes)
+    '''
+    
     if ax is None:
         # No current axes, create a new Figure
         fig = plt.figure(figsize = fig_size)
@@ -65,18 +78,30 @@ def __get_fig_and_axis(ax, fig_size = (10,8)):
 ### CLASSIFICATION
 ####################################
 
-def plot_pvalues(true_labels, p_values, 
-                    ax = None, fig_size = (10,8),
-                    cm = None, markers = None, sizes = None,
+def plot_pvalues(true_labels,
+                    p_values,
+                    ax = None,
+                    fig_size = (10,8),
+                    cm = None,
+                    markers = None,
+                    sizes = None,
                     labels = None,
                     title = None,
                     order = None,
                     x_label = 'p-value 0',
                     y_label = 'p-value 1',
-                    fontargs=None,
+                    fontargs = None,
                     **kwargs):
     '''
     Plot p0 vs p1 (or others if multiclass)
+    
+    Parameters
+    ----------
+    
+    Returns
+    -------
+    Figure
+        matplotlib.figure.Figure object
     '''
 
     if not isinstance(p_values, np.ndarray):
@@ -230,33 +255,61 @@ def plot_pvalues(true_labels, p_values,
     return fig
 
 
-def plot_calibration_curve(true_labels, p_values, 
-                           ax = None, fig_size = (10,8),
-                           cm = None,
-                           significance_min=0, significance_max=1,
-                           significance_step=0.01, fig_padding=None,
-                           plot_all_labels=True,
-                           class_labels=None,
-                           title=None,
-                           **kwargs):
+def plot_calibration_curve(true_labels,
+                            p_values,
+                            ax = None,
+                            fig_size = (10,8),
+                            title = None,
+                            significance_min=0,
+                            significance_max=1,
+                            significance_step=0.01,
+                            significance_values=None,
+                            cm = None,
+                            fig_padding=None,
+                            plot_all_labels=True,
+                            class_labels=None,
+                            title=None,
+                            **kwargs):
     
-    '''Create a calibration curve (Classification)
+    '''Create a calibration curve **(Classification)**
     
-    Arguments:
-    true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    ax -- (Optional) An existing matplotlib Axes to plot in
-    fig_size -- (Optional) Figure size, ignored if *ax* is given
-    cm -- (Optional) The color-mapping to use. First color will the the overall, then the classes 0,1,..
-    significance_min -- (Optional) The smallest significance level to include
-    significance_max -- (Optional) The largest significance level to include
-    significance_step -- (Optional) The spacing between calculated values
-    fig_padding-- (Optional) The padding added to the drawing area, *None* will add 2.5% of padding 
-    plot_all_labels -- (Optional) If *True* all classes will get their own calibration curve plotted together with the 'overall' error rate, if *False* only the overall will be plotted
-    class_labels -- (Optional) Descriptive labels for the classes 
-    **kwargs -- kwargs passed along to matplot-lib
+    Parameters
+    ----------
+    true_labels : list or 1D numpy array
+        The true labels (with values 0, 1, etc for each class)
+    p_values : A 2D numpy array
+        P-values, first column with p-value for class 0, second for class 1, ..
+    ax : matplotlib Axes, optional
+        An existing matplotlib Axes to plot in (default None)
+    fig_size : tuple of 2 values, optional
+        Figure size that should be generated, ignored if *ax* is given
+    title : str, optional
+        A title to add to the figure (default None)
+    significance_min : float range [0,1], optional
+        The smallest significance level to include (default 0)
+    significance_max : float range [0,1], optional
+        The largest significance level to include (default 1)
+    significance_step : float > 1, optional
+        Spacing between evaulated significance levels (default 0.01)
+    significance_values : list of float, optional
+        A list of significance values to use, the `significance_` values will be ignored if this parameter was passed (default None)
+    cm : colormap (list of colors), optional
+        The color-mapping to use. First color will the the overall, then the classes 0,1,..
+    fig_padding : float, optional
+        Padding added to the drawing area (default None will add 2.5% of padding)
+    plot_all_labels : boolean, optional
+        Plot the error rates for each class (default True). If False, only the 'overall' error rate is plotted
+    class_labels : list of str, optional
+        Descriptive labels for the classes (default will use 0, 1, .. for the classes)
+    **kwargs : kwargs, optional
+        kwargs dict passed to matplotlib
     
+    Returns
+    -------
+    Figure
+        matplotlib.figure.Figure object
     '''
+    
     # Create a list with all significances 
     significances = __get_significance_values(significance_min,significance_max,significance_step)
     sign_max = significances[len(significances)-1]
@@ -309,32 +362,54 @@ def plot_calibration_curve(true_labels, p_values,
     
     return error_fig
 
-def plot_label_distribution(true_labels, p_values, 
-                            ax=None, fig_size=(10,8),
+def plot_label_distribution(true_labels,
+                            p_values,
+                            ax=None,
+                            fig_size=(10,8),
                             title=None,
-                            significance_min=0, significance_max=1,
+                            significance_min=0,
+                            significance_max=1,
                             significance_step=0.01,
+                            significance_values=None,
                             cm=None,
                             display_incorrects=False,
-                            #single_label_color='green', 
-                            #multi_label_color='red', 
-                            #empty_label_color='white', 
                             mark_best=True,
                             **kwargs):
-    '''Create a stacked plot with label ratios (Classification)
+    '''Create a stacked plot with label ratios **(Classification)**
     
-    Arguments:
-    true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    ax -- (Optional) An existing matplotlib Axes to plot in
-    fig_size -- (Optional) Figure size, ignored if *ax* is given
-    significance_min -- (Optional) The smallest significance level to include
-    significance_max -- (Optional) The largest significance level to include
-    significance_step -- (Optional) The spacing between calculated values
-    cm -- (Optional) A color map (list of colors) in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  (if *display_incorrects=True* a list of at least 5 is required, otherwise 3 is sufficient)
-    display_incorrects -- (Optional) Include colors for the incorrect singlelabel and incorrect multilabel predictions
-    mark_best -- (Optional) If *True* adds a line and textbox with the significance with the largest ratio of single-label predictions
-    **kwargs -- kwargs passed along to matplot-lib
+    Parameters
+    ----------
+    true_labels : A list or 1D numpy array
+        The true classes/labels using values 0, 1, etc for each class
+    p_values : 2D numpy array
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    ax : matplotlib Axes, optional
+        An existing matplotlib Axes to plot in (default None)
+    fig_size : tuple of 2 values, optional
+        Figure size that should be generated, ignored if *ax* is given
+    title : str, optional
+        A title to add to the figure (default None)
+    significance_min : float range [0,1], optional
+        The smallest significance level to include (default 0)
+    significance_max : float range [0,1], optional
+        The largest significance level to include (default 1)
+    significance_step : float > 1, optional
+        Spacing between evaulated significance levels (default 0.01)
+    significance_values : list of float, optional
+        A list of significance values to use, the *significance_* values will be ignored if this parameter was passed (default None)
+    cm : colormap (list of colors), optional
+        A color map (list of colors) in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  (if *display_incorrects=True* a list of at least 5 is required, otherwise 3 is sufficient)
+    display_incorrects : boolean, optional
+        Plot the incorrect predictions intead of only empty/singletons/multi-label predictions (default True)
+    mark_best : boolean
+        Mark the best significance value with a line and textbox (default True)
+    **kwargs : kwargs
+        kwargs dict passed to matplotlib
+    
+    Returns
+    -------
+    Figure
+        matplotlib.figure.Figure object
     '''
     
     # Set color-mapping
@@ -343,10 +418,14 @@ def plot_label_distribution(true_labels, p_values,
     else:
         pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color, __default_incorr_single_label_color,__default_incorr_multi_label_color]
 
-    # Create a list with all significances 
-    significances = __get_significance_values(significance_min,significance_max,significance_step)
-    sign_max = significances[-1]
-    sign_min = significances[0]
+    # Create a list with all significances
+    if significance_values is not None:
+        # Validate the given significance values
+        
+    else:
+        significances = __get_significance_values(significance_min,significance_max,significance_step)
+        sign_max = significances[-1]
+        sign_min = significances[0]
     
     # Calculate the values
     s_label = []
@@ -441,14 +520,16 @@ def plot_label_distribution(true_labels, p_values,
 
 
 def plot_confusion_matrix_bubbles(confusion_matrix,
-                                  ax=None, fig_size=(10,8),
+                                  ax=None,
+                                  fig_size=(10,8),
                                   title=None,
                                   bubble_size_scale_factor = 2500,
                                   color_scheme = 'prediction_size',
                                   **kwargs):
-    '''Create a Bubble plot over predicted labels at a fixed significance (Classification)
+    '''Create a Bubble plot over predicted labels at a fixed significance level (Classification)
     
-    Arguments:
+    Parameters
+    ----------
     confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
     ax -- (Optional) An existing matplotlib Axes to plot in
     fig_size -- (Optional) Figure size, ignored if *ax* is given
@@ -459,7 +540,13 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
         'label'/'class':=Each class colored differently
         'full':=Correct single, correct multi, incorrect single, incorrect multi and empty colored differently
     **kwargs -- kwargs passed along to matplot-lib
+    
+    Returns
+    -------
+    Figure
+        matplotlib.figure.Figure object
     '''
+    
     # Make sure CM exists
     if confusion_matrix is None:
         # We need to calculate the CM
@@ -548,9 +635,10 @@ def plot_heatmap(confusion_matrix,
                  title=None,
                  cbar_kws=None,
                  **kwargs):
-    '''Plots the Conformal Confusion Matrix in a Heatmap (Classification)
+    '''Plots the Conformal Confusion Matrix in a Heatmap **(Classification)**
     
-    Arguments:
+    Parameters
+    ----------
     confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
     ax -- (Optional) An existing matplotlib Axes to plot in
     fig_size -- (Optional) Figure size as a tuple, ignored if *ax* is given
@@ -558,6 +646,10 @@ def plot_heatmap(confusion_matrix,
     cbar_kws -- (Optional) Arguments passed to the color-bar element
     **kwargs -- kwargs passed along to matplotlib
     
+    Returns
+    -------
+    Figure
+        matplotlib.figure.Figure object
     '''
     if not __using_seaborn:
         raise RuntimeException('Seaborn is required when using this function')
