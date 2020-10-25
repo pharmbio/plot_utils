@@ -19,7 +19,7 @@ class TestConfusionMatrix(unittest.TestCase):
         tr = np.array([0,0,0,0,0])
         expected_CM = np.array([[2, 0], [1,0], [1,0], [1,0]])
         
-        cm = calc_confusion_matrix(tr,p_vals_m, significance=0.2)
+        cm = calc_confusion_matrix(tr,p_vals_m, sign=0.2)
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
     
     def test_small_binary_ex(self):
@@ -32,7 +32,7 @@ class TestConfusionMatrix(unittest.TestCase):
             [0,1]
             ])
 
-        cm = calc_confusion_matrix(tr,p_vals_m, significance=0.2)
+        cm = calc_confusion_matrix(tr,p_vals_m, sign=0.2)
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
     
     def test_with_custom_labels(self):
@@ -41,7 +41,7 @@ class TestConfusionMatrix(unittest.TestCase):
         custom_labels = ['Mutagen', 'Nonmutagen']
         expected_CM = np.array([[1, 1], [1,0], [1,0], [0,1]])
 
-        cm = calc_confusion_matrix(tr,p_vals_m, significance=0.2, class_labels=custom_labels)
+        cm = calc_confusion_matrix(tr,p_vals_m, sign=0.2, labels=custom_labels)
         self.assertEqual(cm.shape, expected_CM.shape)
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
 
@@ -63,7 +63,7 @@ class TestConfusionMatrix(unittest.TestCase):
         )
         true_l = np.array([0, 1, 2, 0])
         custom_labels = [4, 5, 6]
-        cm = calc_confusion_matrix(true_l,p_vals_m, significance=0.2, class_labels=custom_labels)
+        cm = calc_confusion_matrix(true_l,p_vals_m, sign=0.2, labels=custom_labels)
 
         expected_CM = np.array([
             [0,0,0],
@@ -87,7 +87,7 @@ class TestConfusionMatrix(unittest.TestCase):
         )
         true_l = np.array([0, 1, 2, 0])
         custom_labels = [4, 5, 6]
-        cm = calc_confusion_matrix(true_l,p_vals_m, significance=0.2, class_labels=custom_labels, normalize_per_class=True)
+        cm = calc_confusion_matrix(true_l,p_vals_m, sign=0.2, labels=custom_labels, normalize_per_class=True)
         #print(cm)
         expected_CM = np.array([
             [0,0,0],

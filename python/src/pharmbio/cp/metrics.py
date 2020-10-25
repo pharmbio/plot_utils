@@ -2,30 +2,40 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 
+from . import utils
 
-__default_significance = 0.8
+_default_significance = 0.8
 
 ####################################
 ### UTILS
 ####################################
 
-def __convert_to_1D_or_raise_error(labels):
-    error_obj = TypeError('labels argument must be either a list or numpy 1D array')
-    if isinstance(labels, list):
-        return np.array( [round(x) for x in labels] )
-    elif isinstance(labels, np.ndarray):
-        # Make sure the shape is correct
-        if len(labels.shape) == 1:
-            # 1D numpy - correct!
-            return labels.astype(int)
-        elif labels.shape[1] > 1:
-            raise error_obj
-        else:
-            # convert to 1D array
-            return np.squeeze(labels).astype(int)
-    else:
-        raise error_obj
-   
+# def __convert_to_1D_or_raise_error(labels):
+#     error_obj = TypeError('labels argument must be either a list or numpy 1D array')
+#     if isinstance(labels, list):
+#         return np.array( [round(x) for x in labels] )
+#     elif isinstance(labels, np.ndarray):
+#         # Make sure the shape is correct
+#         if len(labels.shape) == 1:
+#             # 1D numpy - correct!
+#             return labels.astype(int)
+#         elif labels.shape[1] > 1:
+#             raise error_obj
+#         else:
+#             # convert to 1D array
+#             return np.squeeze(labels).astype(int)
+#     else:
+#         raise error_obj
+
+def _validate_shape(true_labels, p_values):
+    if (len(true_labels) != len(p_values)):
+        raise ValueError('parameters true_labels and p_values must have the same length')
+
+def _validate_sign(sign):
+    if not isinstance(sign, (int,float)):
+        raise TypeError('parameter sign must be a number')
+    if sign < 0 or sign >1:
+        raise ValueError('parameter sign must be in the range [0,1]')
 
 ######################################
 ### CLASSIFICATION - OBSERVED METRICS
@@ -33,22 +43,25 @@ def __convert_to_1D_or_raise_error(labels):
 
 
 def calc_error_rate(true_labels, p_values, sign):
-    '''Calculate the error rate (classification)
+    r"""Calculate the error rate **(classification)**
     
-    Arguments:
-    true_labels -- A 1D numpy array, with values 0, 1, etc for each class. note that dtype must be integer!
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    sign -- the significance the metric should be calculated for
+    Parameters
+    ----------
+    true_labels : 1D numpy array, list or pandas Series
+        True labels
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    sign : float in [0,1]
+        Significance the metric should be calculated for
     
-    returns -- tuple (overall_error_rate, label_wise_error_rates) 
-    '''
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values argument must be a numpy ndarray')
+    Returns
+    -------
+    (overall_error_rate, label_wise_error_rates) 
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
     
-    if (len(true_labels) != p_values.shape[0]):
-        raise ValueError('arguments true_labels and p_values must have the same length')
-    
-    true_labels = __convert_to_1D_or_raise_error(true_labels)
+    _validate_shape(true_labels, p_values)
 
     total_errors = 0
     # lists containing errors/counts for each class label
@@ -78,22 +91,28 @@ def calc_error_rate(true_labels, p_values, sign):
     #return multi_labels / len(true_labels)
 
 def calc_single_label_preds_ext(true_labels, p_values, sign):
-    '''Calculate the fraction of single label predictions (classification), but calculating the correct and incorrect classifications
+    r"""Calculate the fraction of single label predictions **(classification)**
     
-    Arguments:
-    true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    sign -- the significance the metric should be calculated for
+    but calculating the correct and incorrect classifications
     
-    returns -- Tuple (ratio correct single label, ratio incorrect single label) 
-    '''
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values argument must be a numpy ndarray')
+    Parameters
+    ----------
+    true_labels : 1D numpy array, list or pandas Series
+        True labels
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    sign : float in [0,1]
+        Significance the metric should be calculated for
     
-    if (len(true_labels) != p_values.shape[0]):
-        raise ValueError('arguments true_labels and p_values must have the same length')
+    Returns
+    -------
+    (ratio correct single label, ratio incorrect single label) 
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
+    
+    _validate_shape(true_labels, p_values)
 
-    true_labels = __convert_to_1D_or_raise_error(true_labels)
     n_total = len(true_labels)
 
     predictions = p_values > sign
@@ -112,22 +131,25 @@ def calc_single_label_preds_ext(true_labels, p_values, sign):
     return n_corr/n_total, n_incorr/n_total
 
 def calc_multi_label_preds_ext(true_labels, p_values, sign):
-    '''Calculate the fraction of multi-label predictions (classification), but calculating the correct and incorrect classifications
+    r"""Calculate the fraction of multi-label predictions (classification), but calculating the correct and incorrect classifications
     
-    Arguments:
-    true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    sign -- the significance the metric should be calculated for
+    Parameters
+    ----------
+    true_labels : 1D numpy array, list or pandas Series
+        True labels
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    sign : float in [0,1]
+        Significance the metric should be calculated for
     
-    returns -- Tuple (ratio correct multi-label, ratio incorrect multi-label) 
-    '''
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values argument must be a numpy ndarray')
+    Returns
+    ------- 
+    (ratio correct multi-label, ratio incorrect multi-label) 
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
     
-    if (len(true_labels) != p_values.shape[0]):
-        raise ValueError('arguments true_labels and p_values must have the same length')
-
-    true_labels = __convert_to_1D_or_raise_error(true_labels)
+    _validate_shape(true_labels, p_values)
     n_total = len(true_labels)
 
     predictions = p_values > sign
@@ -145,28 +167,27 @@ def calc_multi_label_preds_ext(true_labels, p_values, sign):
     
     return n_corr/n_total, n_incorr/n_total
 
-    #multi_labels = 0
-    #for i in range(0,p_values.shape[0]):
-    #    if (p_values[i,:] > sign).sum() > 1:
-    #        multi_labels += 1
-    #return multi_labels / len(true_labels)
 
 def calc_OF(true_labels, p_values):
-    ''' Calculates the Observed Fuzziness (significance independent)
+    r"""Calculates the Observed Fuzziness
     
-    Arguments:
-    true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
+    Significance independent metric, smaller is better
     
-    returns -- The Observed Fuzziness 
-    '''
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values argument must be a numpy ndarray')
+    Parameters
+    ----------
+    true_labels : 1D numpy array, list or pandas Series
+        True labels
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
     
-    if (len(true_labels) != p_values.shape[0]):
-        raise ValueError('arguments true_labels and p_values must have the same length')
+    Returns
+    -------
+    float 
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
     
-    true_labels = __convert_to_1D_or_raise_error(true_labels)
+    _validate_shape(true_labels, p_values)
 
     of_sum = 0
     for i in range(0,p_values.shape[0]):
@@ -178,30 +199,41 @@ def calc_OF(true_labels, p_values):
     
     return of_sum / len(true_labels)
 
-def calc_confusion_matrix(true_labels, p_values, significance, 
-                class_labels=None, normalize_per_class = False):
-    ''' Calculates a conformal confusion matrix with number of predictions for each class and number of both and none. 
+def calc_confusion_matrix(true_labels, 
+                            p_values, 
+                            sign, 
+                            labels=None, 
+                            normalize_per_class = False):
+    r"""Calculate a conformal confusion matrix **Classification**
+    
+    A conformal confusion matrix includes the number of predictions for each class, empty predition sets and
+    multi-prediction sets.
 
-    Arguments:
-    true_labels -- A list or 1D numpy array, with values 0, 1, etc for each class
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class
-    significance -- The significance value to use, a value between 0 and 1
-    class_labels -- (Optional) A list with the class names
-    normalize_per_class -- (Optional) Normalizes the count so that each column sums to 1 (good when visualizing imbalanced datasets)
+    Parameters
+    ----------
+    true_labels : 1D numpy array, list or pandas Series
+        True labels
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    sign : float in [0,1]
+        Significance the confusion matrix should be calculated for
+    labels : list of str, optional
+        Descriptive labels for the classes
+    normalize_per_class : bool, optional
+        Normalizes the count so that each column sums to 1, good when visualizing imbalanced datasets (default False)
     
-    returns -- A Pandas dataframe with a Conformal Confusion Matrix
-    '''
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values argument must be a numpy ndarray')
+    Returns
+    -------
+    pandas DataFrame
+        The confusion matrix 
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
     
-    if len(true_labels) != p_values.shape[0]:
-        raise ValueError('arguments true_labels and p_values must have the same length')
-    if p_values.shape[1] < 2:
-        raise ValueError('Number of classes must be at least 2')
-
-    true_labels = __convert_to_1D_or_raise_error(true_labels)
+    _validate_shape(true_labels, p_values)
+    _validate_sign(sign)
     
-    predictions = p_values > significance
+    predictions = p_values > sign
     
     n_class = p_values.shape[1]
     
@@ -211,10 +243,10 @@ def calc_confusion_matrix(true_labels, p_values, significance,
     else:
         result_matrix = np.zeros((n_class+3, n_class))
     
-    if class_labels is None:
-        class_labels = list(range(n_class))
-    elif len(class_labels) != n_class:
-        raise ValueError('class_labels must have the same length as the number of classes')
+    if labels is None:
+        labels = list(range(n_class))
+    elif len(labels) != n_class:
+        raise ValueError('parameter labels must have the same length as the number of classes')
     
     # For every observed class - t
     for t in range(n_class):
@@ -246,7 +278,7 @@ def calc_confusion_matrix(true_labels, p_values, significance,
             result_matrix[n_class+1,t] = t_num_correct_multi
             result_matrix[n_class+2,t] = t_num_incorrect_multi
     
-    row_labels = list(class_labels)
+    row_labels = list(labels)
     row_labels.append('Empty')
     if n_class == 2:
         row_labels.append('Both')
@@ -260,92 +292,161 @@ def calc_confusion_matrix(true_labels, p_values, significance,
         # Convert to int values!
         result_matrix = result_matrix.astype(int)
     
-    return pd.DataFrame(result_matrix, columns=class_labels, index = row_labels)
+    return pd.DataFrame(result_matrix, columns=labels, index = row_labels)
 
 ########################################
 ### CLASSIFICATION - UNOBSERVED METRICS
 ########################################
 
 def calc_single_label_preds(p_values, sign):
-    '''Calculate the fraction of single label predictions (classification)
+    r"""Calculate the fraction of single label predictions (classification)
     
-    Arguments:
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    sign -- the significance the metric should be calculated for
+    Parameters
+    ----------
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    sign : float in [0,1]
+        Significance the metric should be calculated for
     
-    returns -- The fraction of single label predictions (single value) 
-    '''
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values argument must be a numpy ndarray')
+    Returns
+    ------- 
+    float
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    _validate_sign(sign)
     
     predictions = p_values > sign
     return np.mean(np.sum(predictions, axis=1) == 1)
 
 def calc_multi_label_preds(p_values, sign):
-    '''Calculate the fraction of multi-label predictions (classification)
+    r"""Calculate the fraction of multi-label predictions (classification)
     
-    Arguments:
-    p_values -- A 2D numpy array with first column p-value for the 0-class, second column p-value for second class etc..
-    sign -- the significance the metric should be calculated for
+    Parameters
+    ----------
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    sign : float in [0,1]
+        Significance the metric should be calculated for
     
-    returns -- The fraction of multi-label predictions
-    '''
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values argument must be a numpy ndarray')
+    Returns
+    ------- 
+    float
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    _validate_sign(sign)
     
     predictions = p_values > sign
     return np.mean(np.sum(predictions, axis=1) > 1)
 
-def __check_p_vals_correct_type(p_values):
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values must be a numpy 2D array')
-    if len(p_values.shape) < 2:
-        raise TypeError('p_values must be a numpy 2D array')
-    if p_values.shape[1] < 2:
-        raise TypeError('p_values must be a numpy 2D array')
+# def __check_p_vals_correct_type(p_values):
+#     if not isinstance(p_values, np.ndarray):
+#         raise TypeError('p_values must be a numpy 2D array')
+#     if len(p_values.shape) < 2:
+#         raise TypeError('p_values must be a numpy 2D array')
+#     if p_values.shape[1] < 2:
+#         raise TypeError('p_values must be a numpy 2D array')
 
 def calc_credibility(p_values):
-    '''CP Credibility - Mean of the largest p-values
-    '''
-    __check_p_vals_correct_type(p_values)
+    r"""CP Credibility
+    
+    Mean of the largest p-values
+
+    Parameters
+    ----------
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    
+    Returns
+    ------- 
+    float
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
     sorted_matrix = np.sort(p_values, axis=1)
     return np.mean(sorted_matrix[:,-1]) # last index is the largest
 
 def calc_confidence(p_values):
-    '''CP Confidence - Mean of 1-'second largest p-value'
-    '''
-    __check_p_vals_correct_type(p_values)
+    r"""CP Confidence 
+    Mean of 1-'second largest p-value'
+
+    Parameters
+    ----------
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    
+    Returns
+    ------- 
+    float
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
     sorted_matrix = np.sort(p_values, axis=1)
     return np.mean(1-sorted_matrix[:,-2])
 
 def calc_s_criterion(p_values):
-    '''S criterion - Mean of the sum of all pvalues
-    '''
-    __check_p_vals_correct_type(p_values)
+    r"""S criterion - Mean of the sum of all pvalues
+
+    Parameters
+    ----------
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    
+    Returns
+    ------- 
+    float
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
     return np.mean(np.sum(p_values, axis=1))
 
-def calc_n_criterion(p_values, significance=__default_significance):
-    '''N criterion - "Number" criterion - the average number of predicted labels
+def calc_n_criterion(p_values, sign=_default_significance):
+    r"""N criterion - 
+    
+    "Number" criterion - the average number of predicted labels. Significance dependent metric
 
-    Significance dependent metric
-    '''
-    __check_p_vals_correct_type(p_values)
-    return np.mean(np.sum(p_values > significance, axis=1))
+    Parameters
+    ----------
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    
+    Returns
+    -------
+    float
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    _validate_sign(sign)
+    return np.mean(np.sum(p_values > sign, axis=1))
 
 def calc_u_criterion(p_values):
-    '''U criterion - "Unconfidence"
+    r"""U criterion - "Unconfidence"
 
     Smaller values are preferable
-    '''
-    __check_p_vals_correct_type(p_values)
+    
+    Parameters
+    ----------
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    
+    Returns
+    ------- 
+    float
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
     sorted_matrix = np.sort(p_values, axis=1)
     return np.mean(sorted_matrix[:,-2])
 
 def calc_f_criteria(p_values):
-    '''F criterion - average fuzziness. Average of the sum of all p-values appart from the largest one
+    r"""F criterion 
+    
+    Average fuzziness. Average of the sum of all p-values appart from the largest one
 
-    '''
-    __check_p_vals_correct_type(p_values)
+    Parameters
+    ----------
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    
+    Returns
+    ------- 
+    float
+    """
+    p_values = utils._as_numpy2D(p_values,'p_values')
     sorted_matrix = np.sort(p_values, axis=1)
     if sorted_matrix.shape[1] == 2:
         # Mean of only the smallest p-value

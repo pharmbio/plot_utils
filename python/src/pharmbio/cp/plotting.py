@@ -4,9 +4,12 @@ import logging
 import math
 import numpy as np
 import pandas as pd
-# from itertools import cycle
+
+# Package stuff
+from . import utils
+# import .utils as utils
 from .metrics import calc_error_rate,calc_single_label_preds
-from .metrics import calc_multi_label_preds,calc_confusion_matrix
+from .metrics import calc_multi_label_preds
 from .metrics import calc_multi_label_preds_ext,calc_single_label_preds_ext
 
 
@@ -31,7 +34,7 @@ __default_incorr_single_label_color = __default_color_map.pop(2)
 __default_incorr_multi_label_color = __default_color_map.pop(2)
 
 ####################################
-### INTERNAL FUNCTIONS
+### INTERNAL UTILS FUNCTIONS
 ####################################
 
 def _get_sign_vals(sign_vals, sign_min=0,sign_max=1,sign_step=0.01):
@@ -39,7 +42,7 @@ def _get_sign_vals(sign_vals, sign_min=0,sign_max=1,sign_step=0.01):
     
     Returns
     -------
-    list of float, sign_min, sign_max
+    list of float
     '''
     
     # prefer an explict list of values
@@ -66,7 +69,7 @@ def _get_sign_vals(sign_vals, sign_min=0,sign_max=1,sign_step=0.01):
         sign_vals = list(np.arange(sign_min,sign_max,sign_step))
         if sign_vals[-1] < sign_max:
             sign_vals.append(sign_max)
-    return sign_vals, sign_vals[0], sign_vals[-1]
+    return sign_vals
 
 def _get_fig_and_axis(ax, fig_size = (10,8)):
     '''Internal function for instantiating a Figure / axes object
@@ -91,40 +94,6 @@ def _get_fig_and_axis(ax, fig_size = (10,8)):
         fig = ax.get_figure()
     
     return fig, ax
-
-def _as_numpy2D(input, param_name):
-    if input is None:
-        raise ValueError('Input '+param_name+ ' cannot be None')
-    elif isinstance(input, list):
-        # This should be a python list-matrix, convert to numpy matrix
-        matrix = np.array(input)
-    elif isinstance(input, pd.DataFrame):
-        matrix = input.to_numpy()
-    elif isinstance(input, np.ndarray):
-        matrix = input
-    else:
-        raise ValueError('parameter '+param_name + ' in unsupported format: ' + str(type(input)))
-    # Validate at least 2 columns present
-    if len(matrix.shape) < 2 or matrix.shape[1] < 2 :
-        raise ValueError('parameter ' + param_name + ' must be a matrix with at least 2 columns')
-    return matrix
-
-def _as_numpy1D_int(input, param_name):
-    if isinstance(input, (list, pd.Series)):
-        arr = np.array(input)
-    elif isinstance(input, np.ndarray):
-        if len(input.shape) == 1:
-            arr = input
-        elif input.shape[1]>1:
-            raise ValueError('parameter ' + param_name + ' must be a list, 1D numpy array or pandas Series')
-        else:
-            input.shape = (len(input), )
-            arr = input
-    else:
-        raise ValueError('parameter ' + param_name + ' must be a list, 1D numpy array or pandas Series')
-
-    return arr.astype(np.int16)
-
 
 def _cm_as_list(cm):
     if cm is None:
@@ -230,9 +199,9 @@ def plot_pvalues(true_labels,
     matplotlib.colors.ListedColormap
     """
     # Verify and convert to correct format
-    true_labels = _as_numpy1D_int(true_labels, 'true_labels')
+    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
     unique_labels = np.sort(np.unique(true_labels).astype(int))
-    p_values = _as_numpy2D(p_values, 'p_values')
+    p_values = utils._as_numpy2D(p_values, 'p_values')
 
     n_class = p_values.shape[1]
 
@@ -438,16 +407,16 @@ def plot_calibration_curve(true_labels,
     """
     
     # Create a list with all significances 
-    sign_vals, sign_min, sign_max = _get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
+    sign_vals = _get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
     
     # Verify and convert to correct format
-    true_labels = _as_numpy1D_int(true_labels, 'true_labels')
+    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
     unique_labels = np.sort(np.unique(true_labels).astype(int))
-    p_values = _as_numpy2D(p_values, 'p_values')
+    p_values = utils._as_numpy2D(p_values, 'p_values')
     labels = _get_default_labels(labels, unique_labels)
 
     if chart_padding is None:
-        chart_padding = (sign_max - sign_min)*0.025
+        chart_padding = (sign_vals[-1] - sign_vals[0])*0.025
     
     overall_error_rates = []
     if plot_all_labels:
@@ -462,7 +431,7 @@ def plot_calibration_curve(true_labels,
     
     error_fig, ax = _get_fig_and_axis(ax, fig_size)
     # Set chart range and add dashed diagonal
-    ax.axis([sign_min-chart_padding, sign_max+chart_padding, sign_min-chart_padding, sign_max+chart_padding]) 
+    ax.axis([sign_vals[0]-chart_padding, sign_vals[-1]+chart_padding, sign_vals[0]-chart_padding, sign_vals[-1]+chart_padding]) 
     ax.plot(sign_vals, sign_vals, '--k', alpha=0.25, linewidth=1)
     
     # Plot overall (high zorder to print it on top)
@@ -541,7 +510,11 @@ def plot_label_distribution(true_labels,
         pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color, __default_incorr_single_label_color,__default_incorr_multi_label_color]
 
     # Create a list with all significances
-    sign_vals, sign_min, sign_max = _get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
+    sign_vals = _get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
+
+    # Validate format
+    p_values = utils._as_numpy2D(p_values,'p_values')
+    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
     
     # Calculate the values
     s_label = []
@@ -615,7 +588,7 @@ def plot_label_distribution(true_labels,
     
     fig, ax = _get_fig_and_axis(ax, fig_size)
 
-    ax.axis([sign_min,sign_max,0,1])
+    ax.axis([sign_vals[0],sign_vals[-1],0,1])
     ax.stackplot(sign_vals,ys,
                   labels=labels, 
                   colors=colors,**kwargs) #
