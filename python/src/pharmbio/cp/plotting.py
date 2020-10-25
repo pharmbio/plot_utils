@@ -4,6 +4,7 @@ import logging
 import math
 import numpy as np
 import pandas as pd
+# from itertools import cycle
 from .metrics import calc_error_rate,calc_single_label_preds
 from .metrics import calc_multi_label_preds,calc_confusion_matrix
 from .metrics import calc_multi_label_preds_ext,calc_single_label_preds_ext
@@ -33,40 +34,57 @@ __default_incorr_multi_label_color = __default_color_map.pop(2)
 ### INTERNAL FUNCTIONS
 ####################################
 
-def __get_significance_values(sign_min=0,sign_max=1,sign_step=0.01):
+def _get_sign_vals(sign_vals, sign_min=0,sign_max=1,sign_step=0.01):
     '''Internal function for generation of a list of significance values
     
     Returns
     -------
-    list of float
+    list of float, sign_min, sign_max
     '''
     
-    # Do some validation
-    if sign_min<0:
-        sign_min = 0
-    if sign_max > 1:
-        sign_max = 1
-    if sign_max < sign_min:
-        raise ValueError('sign_max < sign_min not allowed')
-    if sign_step < 1e-4 or sign_step > 1:
-        sign_step = 0.01
-    
-    significances = list(np.arange(sign_min,sign_max,sign_step))
-    if significances[-1] < sign_max:
-        significances.append(sign_max)
-    return significances
+    # prefer an explict list of values
+    if sign_vals is not None:
+        if not isinstance(sign_vals, list):
+            raise TypeError('parameter sign_vals must be a list of floats')
+        if len(sign_vals) < 2:
+            raise ValueError('parameter sign_vals must be a list with more than one value')
+        # Validate the given significance values
+        sign_vals = sorted(sign_vals)
+        for sign in sign_vals:
+            if sign > 1 or sign < 0:
+                raise ValueError('Significance value must be in the range [0,1]')
+    else:
+        # Do some validation
+        if sign_min<0:
+            raise ValueError('sign_min must be >= 0')
+        if sign_max > 1:
+            raise ValueError('sign_min must be <= 1')
+        if sign_max < sign_min:
+            raise ValueError('sign_max < sign_min not allowed')
+        if sign_step < 1e-4 or sign_step > .5:
+            raise ValueError('sign_step must be in the range [1e-4, 0.5]')
+        sign_vals = list(np.arange(sign_min,sign_max,sign_step))
+        if sign_vals[-1] < sign_max:
+            sign_vals.append(sign_max)
+    return sign_vals, sign_vals[0], sign_vals[-1]
 
-def __get_fig_and_axis(ax, fig_size = (10,8)):
+def _get_fig_and_axis(ax, fig_size = (10,8)):
     '''Internal function for instantiating a Figure / axes object
     
     Returns
     -------
-    tuple (Figure, axes)
+    Figure, axes
     '''
     
     if ax is None:
         # No current axes, create a new Figure
-        fig = plt.figure(figsize = fig_size)
+        if isinstance(fig_size, (int, float)):
+            fig = plt.figure(figsize = (fig_size, fig_size))
+        elif isinstance(fig_size, tuple):
+            fig = plt.figure(figsize = fig_size)
+        else:
+            raise TypeError('parameter fig_size must either be float or (float, float), was: ' +
+                str(type(fig_size)))
         # Add an axes spanning the entire Figure
         ax = fig.add_subplot(111)
     else:
@@ -74,180 +92,283 @@ def __get_fig_and_axis(ax, fig_size = (10,8)):
     
     return fig, ax
 
+def _as_numpy2D(input, param_name):
+    if input is None:
+        raise ValueError('Input '+param_name+ ' cannot be None')
+    elif isinstance(input, list):
+        # This should be a python list-matrix, convert to numpy matrix
+        matrix = np.array(input)
+    elif isinstance(input, pd.DataFrame):
+        matrix = input.to_numpy()
+    elif isinstance(input, np.ndarray):
+        matrix = input
+    else:
+        raise ValueError('parameter '+param_name + ' in unsupported format: ' + str(type(input)))
+    # Validate at least 2 columns present
+    if len(matrix.shape) < 2 or matrix.shape[1] < 2 :
+        raise ValueError('parameter ' + param_name + ' must be a matrix with at least 2 columns')
+    return matrix
+
+def _as_numpy1D_int(input, param_name):
+    if isinstance(input, (list, pd.Series)):
+        arr = np.array(input)
+    elif isinstance(input, np.ndarray):
+        if len(input.shape) == 1:
+            arr = input
+        elif input.shape[1]>1:
+            raise ValueError('parameter ' + param_name + ' must be a list, 1D numpy array or pandas Series')
+        else:
+            input.shape = (len(input), )
+            arr = input
+    else:
+        raise ValueError('parameter ' + param_name + ' must be a list, 1D numpy array or pandas Series')
+
+    return arr.astype(np.int16)
+
+
+def _cm_as_list(cm):
+    if cm is None:
+        return __default_color_map
+    elif isinstance(cm, mpl.colors.ListedColormap):
+        return list(cm.colors)
+    elif isinstance(cm, list):
+        return cm
+    else:
+        return [cm]
+
+def _get_default_labels(labels, unique_labels):
+    sorted_labels = sorted(unique_labels)
+    if labels is not None:
+        if not isinstance(labels, (np.ndarray, list)):
+            raise TypeError('parameter labels must be either a list or 1D numpy array')
+        if len(labels) < sorted_labels[-1]:
+            raise TypeError('parameter labels and number of classes does not match')
+        return np.array(labels).astype(str)
+    else:
+        # No labels, use the unique_labels found
+        labels = []
+        for lab in range(0, unique_labels[-1]+1):
+            labels.append('Label ' + str(lab))
+        return np.array(labels)
+
+
 ####################################
 ### CLASSIFICATION
 ####################################
 
 def plot_pvalues(true_labels,
                     p_values,
+                    cols = [0,1],
+                    labels = None,
                     ax = None,
                     fig_size = (10,8),
                     cm = None,
                     markers = None,
                     sizes = None,
-                    labels = None,
                     title = None,
-                    order = None,
-                    x_label = 'p-value 0',
-                    y_label = 'p-value 1',
+                    order = "freq",
+                    x_label = 'p-value {class}',
+                    y_label = 'p-value {class}',
+                    add_legend = True,
                     fontargs = None,
                     **kwargs):
-    '''
-    Plot p0 vs p1 (or others if multiclass)
+    r"""Plot p-values agains each other
+
+    Plot p-values against each other, switch the axes by setting the `cols` parameter
+    and handle multi-class predictions by deciding which p-values should be plotted.
     
     Parameters
     ----------
+    true_labels : 1D numpy array, list or pandas Series
+        True labels
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    cols : list of int
+        Colums in the `p_values` matrix to plot
+    labels : list of str, optional
+        Textual labels for the classes, will affect the x- and y-labels and the legend
+    ax : matplotlib Axes, optional
+        An existing matplotlib Axes to plot in (default None)
+    fig_size : float or (float, float), optional
+        Figure size to generate, ignored if `ax` is given
+    cm : color, list of colors or ListedColorMap, optional
+        Colors to plot each class with, index 0 for class 0, etc.
+    markers : str or list of str, optional
+        Markers to use, if a single one is given, all points/classes will get that marker,
+        if a list is given index 0 will be used for class 0, etc. If the list is of the same length
+        as the number of predictions each example will get their own marker
+    sizes : float or list of float, optional
+        Size(s) to use for all predictions or for predictions for each class
+    title : str, optional
+        A title to add to the figure (default None)
+    order : {'freq', 'class', 'label', None}
+        Order in which the points are plotted, options:
+        'freq' : plot each half of the plot independently, choosing the order by
+            the frequency of each class - so the smallest class is plotted last.
+            This will make it less likely that outliers are hidden by points plotted later
+        'class' / 'label' / None : Plot based on order of classes, i.e. plot class 0, 1, 2,..
+    x_label : str, optional
+        label for the x-axis, default is 'p-value {class x}' where x is based on the `cols` parameter
+        If None is given, no y-label is added to the figure
+    y_label : str, optional
+        label for the y-axis, default is 'p-value {class y}' where y is based on the `cols` parameter.
+        If None is given, no y-label is added to the figure
+    add_legend : bool, optional
+        If a legend should be added to the figure (Default True)
+    fontargs : dict, optional
+        Font arguments passed to matplotlib
+    **kwargs : dict, optional
+        Keyword arguments, passed to matplotlib
     
     Returns
     -------
     Figure
         matplotlib.figure.Figure object
-    '''
-
-    if not isinstance(p_values, np.ndarray):
-        raise TypeError('p_values must be a numpy ndarray')
-    if p_values.shape[1] != 2:
-        raise ValueError('p_values must be a (n_examples,2) shaped numpy ndarray')
     
-    fig, ax = __get_fig_and_axis(ax, fig_size)
+    See Also
+    --------
+    matplotlib.colors.ListedColormap
+    """
+    # Verify and convert to correct format
+    true_labels = _as_numpy1D_int(true_labels, 'true_labels')
+    unique_labels = np.sort(np.unique(true_labels).astype(int))
+    p_values = _as_numpy2D(p_values, 'p_values')
 
-    # Set the color-map
-    if cm is None:
-        pal = __default_color_map
-    else:
-        pal = list(cm)
-    # Color individual examples
-    # Find all unique labels
-    if len(pal) == 1:
-        # Single color for all
-        colors = [pal[0]]*len(true_labels)
-    else:
-        # Unique color for each example
-        colors = []
-        for ex in true_labels:
-            colors.append(pal[int(ex) % len(pal)])
-    colors = np.array(colors)
+    n_class = p_values.shape[1]
 
-    unique_labels = sorted(list(np.unique(true_labels).astype(int)))
+    # Verify cols argument
+    if cols is None or not isinstance(cols, list):
+        raise ValueError('parameter cols must be a list of integer')
+    if len(cols) != 2:
+        raise ValueError('parameter cols must only have 2 values (can only plot 2D)')
+    for col in cols:
+        if not isinstance(col, int) or col < 0 or col > n_class:
+            raise ValueError('parameter col must be a list of int, all in the range [0,'+
+                str(n_class) + ']')
+    
+    fig, ax = _get_fig_and_axis(ax, fig_size)
+    fontargs = fontargs if fontargs is not None else {}
+
+    # Validate the order-argument
+    if order is not None and not isinstance(order, str):
+        raise TypeError('parameter order must be None or str type, was ' + str(type(order)))
+
+    # Set the color-map (list)
+    colors = _cm_as_list(cm)
 
     # Verify the labels
-    if labels is not None:
-        if not isinstance(labels, list):
-            raise TypeError('labels must be a list if supplied')
-        if len(labels) != len(unique_labels):
-            raise TypeError('labels and number of classes does not match') 
+    labels = _get_default_labels(labels, unique_labels)
     
     # Set the markers to a list
     if markers is None:
         # default
         plt_markers = [mpl.rcParams["scatter.marker"]]
-    elif not isinstance(markers, list):
-        # not a list - same marker for all
-        plt_markers = [markers]
-    else:
+    elif isinstance(markers, list):
         # Unique markers for all
         plt_markers = markers
+    else:
+        # not a list - same marker for all
+        plt_markers = [markers]
     
     # Set the size of the markers
     if sizes is None:
-        plt_sizes = [None] #[mpl.rcParams['lines.markersize']] # Default
+        plt_sizes = [None] # Default
     elif isinstance(sizes, list):
         plt_sizes = sizes
     else:
         plt_sizes = [sizes]
     
     # Do the plotting
-    if order is not None and order.lower() == 'order':
+    if order is None or (order.lower() == 'class' or order.lower() == 'label') :
         # Use the order of the labels simply 
         for lab in unique_labels:
             label_filter = np.array(true_labels == lab)
-            x = p_values[label_filter, 0]
-            y = p_values[label_filter, 1]
-            c = colors[label_filter]
-            m = plt_markers[int(lab) % len(plt_markers)]
-            #if plt_sizes is None:
-            #    s = None
-            #else:
-            s = plt_sizes[int(lab) % len(plt_sizes)]
-            label = None
-            if labels is not None:
-                label = labels[int(lab)]
-            ax.scatter(x, y, s=s, c=c, marker = m, label=label, **kwargs)
-    else:
+            x = p_values[label_filter, cols[0]]
+            y = p_values[label_filter, cols[1]]
+            ax.scatter(x, y, 
+                s = plt_sizes[lab % len(plt_sizes)], 
+                color = colors[lab % len(colors)], 
+                marker = plt_markers[lab % len(plt_markers)], 
+                label = labels[lab],
+                **kwargs)
+        # The order is now based on the unique_labels list-so adding a legend is straight forward
+        if add_legend:
+            ax.legend(loc='upper right',**fontargs)
+    elif order.lower() == 'freq':
         # Try to use a smarter apporach
-        unique_labels = np.array(unique_labels)
         num_ul = []
         num_lr = []
         num_per_label = []
         # Compute the order of classes to plot
         for lab in unique_labels:
             label_filter = np.array(true_labels == lab)
-            x = p_values[label_filter, 0]
-            y = p_values[label_filter, 1]
+            x = p_values[label_filter, cols[0]]
+            y = p_values[label_filter, cols[1]]
             num_per_label.append(len(x))
             # the number in lower-right part and upper-left
             num_lr.append((x>y).sum())
             num_ul.append(x.shape[0] - num_lr[-1])
         
-        # For small datasets, normalize for size
-        if order is not None and order.lower() == 'rel':
-            num_ul = np.array(num_ul) / np.array(num_per_label)
-            num_lr = np.array(num_lr) / np.array(num_per_label)
+        # Normalize for size
+        num_ul = np.array(num_ul) / np.array(num_per_label)
+        num_lr = np.array(num_lr) / np.array(num_per_label)
         
         # Plot the upper-left section
+        lab_order, handles = [], []
         ul_sorting = np.argsort(num_ul)[::-1]
         for lab in unique_labels[ul_sorting]:
             label_filter = np.array(true_labels == lab)
-            x = p_values[label_filter, 0]
-            y = p_values[label_filter, 1]
+            x = p_values[label_filter, cols[0]]
+            y = p_values[label_filter, cols[1]]
             upper_left_filter = y >= x
             x = x[upper_left_filter]
             y = y[upper_left_filter]
-            c = colors[label_filter][upper_left_filter]
-            m = plt_markers[int(lab) % len(plt_markers)]
-            s = plt_sizes[int(lab) % len(plt_sizes)] #[None if plt_sizes is None else
-            label = None
-            if labels is not None:
-                label = labels[int(lab)]
-            ax.scatter(x, y, s=s, c=c, marker = m, label=label, **kwargs)
+            handle = ax.scatter(x, y, 
+                s = plt_sizes[lab % len(plt_sizes)], 
+                color = colors[lab % len(colors)], 
+                marker = plt_markers[lab % len(plt_markers)], 
+                **kwargs)
+            lab_order.append(lab)
+            handles.append(handle)
 
         # Plot the lower-right section
         lr_sorting = np.argsort(num_lr)[::-1]
         for lab in unique_labels[lr_sorting]:
             label_filter = np.array(true_labels == lab)
-            x = p_values[label_filter, 0]
-            y = p_values[label_filter, 1]
+            x = p_values[label_filter, cols[0]]
+            y = p_values[label_filter, cols[1]]
             lower_right_filter = y < x
             x = x[lower_right_filter]
             y = y[lower_right_filter]
-            c = colors[label_filter][lower_right_filter]
-            m = plt_markers[int(lab) % len(plt_markers)]
-            s = plt_sizes[int(lab) % len(plt_sizes)] #[None if plt_sizes is None else
             # Skip the labels in second one!
-            ax.scatter(x, y, s=s, c=c, marker = m, **kwargs)
+            ax.scatter(x, y, 
+                s = plt_sizes[lab % len(plt_sizes)], 
+                color = colors[lab % len(colors)], 
+                marker = plt_markers[lab % len(plt_markers)], 
+                **kwargs)
+        # Add legend - in correct order
+        if add_legend:
+            ls, hs = zip(*sorted(zip(lab_order, handles), key=lambda t: t[0]))
+            ax.legend(hs, [labels[x] for x in ls], loc='upper right', **fontargs)
+    else:
+        raise ValueError('parameter order not any of the allowed values: ' + str(order))
 
     ax.set_ylim([-.025, 1.025])
     ax.set_xlim([-.025, 1.025])
     
-    if labels is not None:
-        if fontargs is not None:
-            ax.legend(loc='upper right',**fontargs)
-        else:
-            ax.legend(loc='upper right')
-    
     # Set some labels and title
+
     if y_label is not None:
-        if fontargs is not None:
-            ax.set_ylabel(y_label,**fontargs)
-        else:
-            ax.set_ylabel(y_label)
+        y_label = y_label.replace('{class}', str(labels[cols[1]]))
+        ax.set_ylabel(y_label,**fontargs)
+
     if x_label is not None:
-        if fontargs is not None:
-            ax.set_xlabel(x_label,**fontargs)
-        else:
-            ax.set_xlabel(x_label)
+        x_label = x_label.replace('{class}', str(labels[cols[0]]))
+        ax.set_xlabel(x_label,**fontargs)
+
     if title is not None:
-        if fontargs is None:
+        if not bool(fontargs):
+            # No font-args given, use larger font for the title
             ax.set_title(title, {'fontsize': 'x-large'})
         else:
             ax.set_title(title, **fontargs)
@@ -257,21 +378,21 @@ def plot_pvalues(true_labels,
 
 def plot_calibration_curve(true_labels,
                             p_values,
+                            labels = None,
                             ax = None,
                             fig_size = (10,8),
-                            title = None,
-                            significance_min=0,
-                            significance_max=1,
-                            significance_step=0.01,
-                            significance_values=None,
+                            sign_min=0,
+                            sign_max=1,
+                            sign_step=0.01,
+                            sign_vals=None,
                             cm = None,
-                            fig_padding=None,
+                            overall_color = 'black',
+                            chart_padding=None,
                             plot_all_labels=True,
-                            class_labels=None,
                             title=None,
                             **kwargs):
     
-    '''Create a calibration curve **(Classification)**
+    r"""Create a calibration curve **(Classification)**
     
     Parameters
     ----------
@@ -279,81 +400,80 @@ def plot_calibration_curve(true_labels,
         The true labels (with values 0, 1, etc for each class)
     p_values : A 2D numpy array
         P-values, first column with p-value for class 0, second for class 1, ..
+    labels : list of str, optional
+        Descriptive labels for the classes
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
-    fig_size : tuple of 2 values, optional
-        Figure size that should be generated, ignored if *ax* is given
+    fig_size : float or (float, float), optional
+        Figure size to generate, ignored if `ax` is given
     title : str, optional
         A title to add to the figure (default None)
-    significance_min : float range [0,1], optional
+    sign_min : float range [0,1], optional
         The smallest significance level to include (default 0)
-    significance_max : float range [0,1], optional
+    sign_max : float range [0,1], optional
         The largest significance level to include (default 1)
-    significance_step : float > 1, optional
+    sign_step : float in range [1e-4, 0.5], optional
         Spacing between evaulated significance levels (default 0.01)
-    significance_values : list of float, optional
+    sign_vals : list of float, optional
         A list of significance values to use, the `significance_` values will be ignored if this parameter was passed (default None)
-    cm : colormap (list of colors), optional
-        The color-mapping to use. First color will the the overall, then the classes 0,1,..
-    fig_padding : float, optional
+    cm : color, list of colors or ListedColorMap, optional
+        The colors to use. First color will be for class 0, second for class 1, ..
+    overall_color : color, optional
+        The color to use for the overall error rate (Default 'black')
+    chart_padding : float, optional
         Padding added to the drawing area (default None will add 2.5% of padding)
     plot_all_labels : boolean, optional
         Plot the error rates for each class (default True). If False, only the 'overall' error rate is plotted
-    class_labels : list of str, optional
-        Descriptive labels for the classes (default will use 0, 1, .. for the classes)
-    **kwargs : kwargs, optional
-        kwargs dict passed to matplotlib
+    **kwargs : dict, optional
+        Keyword arguments, passed to matplotlib
     
     Returns
     -------
     Figure
         matplotlib.figure.Figure object
-    '''
+    
+    See Also
+    --------
+    matplotlib.colors.ListedColormap
+    """
     
     # Create a list with all significances 
-    significances = __get_significance_values(significance_min,significance_max,significance_step)
-    sign_max = significances[len(significances)-1]
-    sign_min = significances[0]
+    sign_vals, sign_min, sign_max = _get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
     
-    if class_labels is not None:
-        if len(class_labels) != p_values.shape[1]:
-            raise ValueError('Number of class labels must be equal to number of p-values ' + 
-                                 str(len(class_labels)) + " != " + str(p_values.shape[1]))
-    if cm is None:
-        pal = __default_color_map
-    else:
-        pal = list(cm)
+    # Verify and convert to correct format
+    true_labels = _as_numpy1D_int(true_labels, 'true_labels')
+    unique_labels = np.sort(np.unique(true_labels).astype(int))
+    p_values = _as_numpy2D(p_values, 'p_values')
+    labels = _get_default_labels(labels, unique_labels)
 
-    if fig_padding is None:
-        fig_padding = (sign_max - sign_min)*0.025
+    if chart_padding is None:
+        chart_padding = (sign_max - sign_min)*0.025
     
     overall_error_rates = []
     if plot_all_labels:
-        label_based_rates = np.zeros((len(significances), p_values.shape[1]))
+        label_based_rates = np.zeros((len(sign_vals), p_values.shape[1]))
     
-    for ind, s in enumerate(significances):
+    for ind, s in enumerate(sign_vals):
         overall, label_based = calc_error_rate(true_labels,p_values,s)
         overall_error_rates.append(overall)
         if plot_all_labels:
             # sets all values in a row
             label_based_rates[ind] = label_based
     
-    error_fig, ax = __get_fig_and_axis(ax, fig_size)
-
-    ax.axis([sign_min-fig_padding, sign_max+fig_padding, sign_min-fig_padding, sign_max+fig_padding]) 
-    ax.plot(significances, significances, '--k', alpha=0.25, linewidth=1)
+    error_fig, ax = _get_fig_and_axis(ax, fig_size)
+    # Set chart range and add dashed diagonal
+    ax.axis([sign_min-chart_padding, sign_max+chart_padding, sign_min-chart_padding, sign_max+chart_padding]) 
+    ax.plot(sign_vals, sign_vals, '--k', alpha=0.25, linewidth=1)
     
+    # Plot overall (high zorder to print it on top)
+    ax.plot(sign_vals, overall_error_rates, c=overall_color, label='Overall', zorder=10, **kwargs)
+
     if plot_all_labels:
-        # Specify a higher zorder for the overall to print it on the top (most important)
-        ax.plot(significances, overall_error_rates,c="black", label='Overall',zorder=10, **kwargs)
+        colors = _cm_as_list(cm)
         for i in range(label_based_rates.shape[1]):
-            label = 'Label ' + str(i)
-            if class_labels is not None:
-                label = class_labels[i]
-            ax.plot(significances,label_based_rates[:,i], c=pal[i+1], label=str(label),**kwargs)
-        ax.legend(loc='lower right')
-    else:
-        ax.plot(significances, overall_error_rates,c=pal[0], **kwargs)
+            ax.plot(sign_vals, label_based_rates[:,i], color=colors[i], label=labels[i], **kwargs)
+    
+    ax.legend(loc='lower right')
     
     ax.set_ylabel("Error rate")
     ax.set_xlabel("Significance")
@@ -367,15 +487,15 @@ def plot_label_distribution(true_labels,
                             ax=None,
                             fig_size=(10,8),
                             title=None,
-                            significance_min=0,
-                            significance_max=1,
-                            significance_step=0.01,
-                            significance_values=None,
+                            sign_min=0,
+                            sign_max=1,
+                            sign_step=0.01,
+                            sign_vals=None,
                             cm=None,
                             display_incorrects=False,
                             mark_best=True,
                             **kwargs):
-    '''Create a stacked plot with label ratios **(Classification)**
+    r"""Create a stacked plot with label ratios **(Classification)**
     
     Parameters
     ----------
@@ -385,32 +505,34 @@ def plot_label_distribution(true_labels,
         The predicted p-values, first column for the class 0, second for class 1, ..
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
-    fig_size : tuple of 2 values, optional
-        Figure size that should be generated, ignored if *ax* is given
+    fig_size : float or (float, float), optional
+        Figure size to generate, ignored if `ax` is given
     title : str, optional
         A title to add to the figure (default None)
-    significance_min : float range [0,1], optional
+    sign_min : float range [0,1], optional
         The smallest significance level to include (default 0)
-    significance_max : float range [0,1], optional
+    sign_max : float range [0,1], optional
         The largest significance level to include (default 1)
-    significance_step : float > 1, optional
+    sign_step : float in range [1e-4, 0.5], optional
         Spacing between evaulated significance levels (default 0.01)
-    significance_values : list of float, optional
-        A list of significance values to use, the *significance_* values will be ignored if this parameter was passed (default None)
-    cm : colormap (list of colors), optional
-        A color map (list of colors) in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  (if *display_incorrects=True* a list of at least 5 is required, otherwise 3 is sufficient)
+    sign_vals : list of float, optional
+        Significance values to use, the `significance_` parameters will be ignored if this 
+        parameter was passed (default None)
+    cm : list of colors or ListedColorMap, optional
+        Colors to use, given in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  
+        (if `display_incorrects`=True a list of at least 5 is required, otherwise 3 is sufficient)
     display_incorrects : boolean, optional
-        Plot the incorrect predictions intead of only empty/singletons/multi-label predictions (default True)
+        Plot the incorrect predictions intead of only empty/single/multi-label predictions (default True)
     mark_best : boolean
         Mark the best significance value with a line and textbox (default True)
-    **kwargs : kwargs
-        kwargs dict passed to matplotlib
+    **kwargs : dict, optional
+        Keyword arguments, passed to matplotlib
     
     Returns
     -------
     Figure
         matplotlib.figure.Figure object
-    '''
+    """
     
     # Set color-mapping
     if cm is not None:
@@ -419,13 +541,7 @@ def plot_label_distribution(true_labels,
         pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color, __default_incorr_single_label_color,__default_incorr_multi_label_color]
 
     # Create a list with all significances
-    if significance_values is not None:
-        # Validate the given significance values
-        
-    else:
-        significances = __get_significance_values(significance_min,significance_max,significance_step)
-        sign_max = significances[-1]
-        sign_min = significances[0]
+    sign_vals, sign_min, sign_max = _get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
     
     # Calculate the values
     s_label = []
@@ -435,7 +551,7 @@ def plot_label_distribution(true_labels,
     empty_label = []
     highest_single_ratio = -1
     best_sign = -1
-    for s in significances:
+    for s in sign_vals:
         s_corr, s_incorr = calc_single_label_preds_ext(true_labels, p_values,s)
         m_corr, m_incorr = calc_multi_label_preds_ext(true_labels, p_values, s)
         if display_incorrects:
@@ -497,15 +613,15 @@ def plot_label_distribution(true_labels,
         labels.append('Empty')
         colors.append(pal[2 % len(pal)])
     
-    fig, ax = __get_fig_and_axis(ax, fig_size)
-    
+    fig, ax = _get_fig_and_axis(ax, fig_size)
+
     ax.axis([sign_min,sign_max,0,1])
-    ax.stackplot(significances,ys,
+    ax.stackplot(sign_vals,ys,
                   labels=labels, 
                   colors=colors,**kwargs) #
     
     if mark_best:
-        ax.plot([best_sign,best_sign],[0,1],'--k')
+        ax.plot([best_sign,best_sign],[0,1],'--k', alpha=0.75)
         props = dict(boxstyle='round', facecolor='white', alpha=0.75)
         ax.text(best_sign+0.02, 0.1, str(best_sign), bbox=props)
     
@@ -523,45 +639,50 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
                                   ax=None,
                                   fig_size=(10,8),
                                   title=None,
-                                  bubble_size_scale_factor = 2500,
+                                  bubble_size_scale_factor = 1,
                                   color_scheme = 'prediction_size',
                                   **kwargs):
-    '''Create a Bubble plot over predicted labels at a fixed significance level (Classification)
+    r"""Create a Confusion matrix bubble plot **(Classification)**
+
+    Render a confusion matrix with bubbles, the size of the bubbles are related to the frequency
+    of that prediction type. The confusion matrix is made at a specific significance level. 
     
     Parameters
     ----------
-    confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
-    ax -- (Optional) An existing matplotlib Axes to plot in
-    fig_size -- (Optional) Figure size, ignored if *ax* is given
-    bubble_size_scale_factor -- (Optional) Scaling to be applied on the size of the bubbles, default scaling works OK for the default figure size
-    color_scheme -- (Optional) String - allowed values: 
+    confusion_matrix : DataFrame
+        Confusion matrix in pandas DataFrame, from `metrics.calc_confusion_matrix`
+    ax : matplotlib Axes, optional
+        An existing matplotlib Axes to plot in (default None)
+    fig_size : float or (float, float), optional
+        Figure size to generate, ignored if `ax` is given
+    bubble_size_scale_factor : number, optional
+        Scaling to be applied on the size of the bubbles, default scale factor works OK for the default figure size
+    color_scheme : str, optional
         None/'None':=All in the same color 
         'prediction_size':=Color single/multi/empty in different colors
         'label'/'class':=Each class colored differently
         'full':=Correct single, correct multi, incorrect single, incorrect multi and empty colored differently
-    **kwargs -- kwargs passed along to matplot-lib
+    **kwargs : dict, optional
+        Keyword arguments, passed to matplotlib
     
     Returns
     -------
     Figure
         matplotlib.figure.Figure object
-    '''
     
-    # Make sure CM exists
+    See Also
+    --------
+    metrics.calc_confusion_matrix : Calculating confusion matrix
+    """
+    
+    # Make sure CM exists and correct type
     if confusion_matrix is None:
-        # We need to calculate the CM
-        if true_labels is None or p_values is None or significance is None:
-            raise TypeError('Either a precomputed confusion matrix or {labels,p_values,significance} must be sent')
-        if class_labels is not None:
-            confusion_matrix = calc_confusion_matrix(true_labels, p_values,significance, class_labels=class_labels)
-        else:
-            confusion_matrix = calc_confusion_matrix(true_labels, p_values,significance)
-    
+        raise ValueError('parameter confusion_matrix is required')
     if not isinstance(confusion_matrix, pd.DataFrame):
-        raise TypeError('argument confusion_matrix must be a DataFrame - otherwise give labels and p-values so it can be generated')
+        raise TypeError('argument confusion_matrix must be a pandas DataFrame')
 
     # Create Figure and Axes if not given
-    fig, ax = __get_fig_and_axis(ax, fig_size)
+    fig, ax = _get_fig_and_axis(ax, fig_size)
     
     x_coords = []
     y_coords = []
@@ -610,7 +731,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     # Convert the x and y coordinates to strings
     x_coords = np.array(x_coords, dtype=object).astype(str)
     y_coords = np.array(y_coords, dtype=object).astype(str)
-    sizes_scaled = bubble_size_scale_factor * sizes / sizes.max()
+    sizes_scaled = bubble_size_scale_factor * 2500 * sizes / sizes.max()
     
     ax.scatter(x_coords, y_coords, s=sizes_scaled,c=colors,edgecolors='black',**kwargs)
 
@@ -630,36 +751,52 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     return fig
 
 
-def plot_heatmap(confusion_matrix, 
-                 ax=None, fig_size=(10,8), 
-                 title=None,
-                 cbar_kws=None,
-                 **kwargs):
-    '''Plots the Conformal Confusion Matrix in a Heatmap **(Classification)**
+def plot_confusion_matrix_heatmap(confusion_matrix, 
+                                    ax=None, 
+                                    fig_size=(10,8), 
+                                    title=None,
+                                    cmap=None,
+                                    cbar_kws=None,
+                                    **kwargs):
+    r"""Plots the Conformal Confusion Matrix in a Heatmap **(Classification)**
+    
+    Note that this method requires the Seaborn to be available and will fail otherwise
     
     Parameters
     ----------
-    confusion_matrix -- A precomputed confusion matrix in pandas DataFrame, from pharmbio.cp.metrics.calc_confusion_matrix
-    ax -- (Optional) An existing matplotlib Axes to plot in
-    fig_size -- (Optional) Figure size as a tuple, ignored if *ax* is given
-    title -- (Optional) An optional title that will be printed in 'x-large' font size
-    cbar_kws -- (Optional) Arguments passed to the color-bar element
-    **kwargs -- kwargs passed along to matplotlib
+    confusion_matrix : DataFrame
+        Confusion matrix in pandas DataFrame, from metrics.calc_confusion_matrix
+    ax : matplotlib Axes, optional
+        An existing matplotlib Axes to plot in (default None)
+    fig_size : float or (float, float), optional
+        Figure size to generate, ignored if `ax` is given
+    title : str, optional
+        Optional title that will be printed in 'x-large' font size (default None)
+    cmap : matplotlib colormap name or object, or list of colors, optional
+        Colormap to use for the heatmap, argument passed to Seaborn heatmap
+    cbar_kws : dict, optional
+        Arguments passed to the color-bar element
+    **kwargs : dict, optional
+        Keyword arguments, passed to matplotlib
     
     Returns
     -------
     Figure
         matplotlib.figure.Figure object
-    '''
-    if not __using_seaborn:
-        raise RuntimeException('Seaborn is required when using this function')
     
-    fig, ax = __get_fig_and_axis(ax, fig_size)
+    See Also
+    --------
+    metrics.calc_confusion_matrix : Calculating confusion matrix
+    """
+    
+    if not __using_seaborn:
+        raise RuntimeError('Seaborn is required when using this function')
+    
+    fig, ax = _get_fig_and_axis(ax, fig_size)
     
     if title is not None:
         ax.set_title(title, fontdict={'fontsize':'x-large'})
-    
-    ax = sns.heatmap(confusion_matrix, ax=ax, annot=True,cbar_kws=cbar_kws, **kwargs)
+    ax = sns.heatmap(confusion_matrix, ax=ax, annot=True, cmap=cmap, cbar_kws=cbar_kws, **kwargs)
     ax.set(xlabel='Predicted', ylabel='Observed')
     
     return fig
