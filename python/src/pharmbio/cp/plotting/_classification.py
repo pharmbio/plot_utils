@@ -107,6 +107,7 @@ def plot_pvalues(y_true,
                     x_label = 'p-value {class}',
                     y_label = 'p-value {class}',
                     add_legend = True,
+                    tight_layout = True,
                     fontargs = None,
                     **kwargs):
     """Plot p-values agains each other
@@ -118,42 +119,60 @@ def plot_pvalues(y_true,
     ----------
     y_true : 1D numpy array, list or pandas Series
         True labels
+
     p_values : 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
+
     cols : list of int
         Colums in the `p_values` matrix to plot
+
     labels : list of str, optional
         Textual labels for the classes, will affect the x- and y-labels and the legend
+
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
+
     fig_size : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
+
     cm : color, list of colors or ListedColorMap, optional
         Colors to plot each class with, index 0 for class 0, etc.
+
     markers : str or list of str, optional
         Markers to use, if a single one is given, all points/classes will get that marker,
         if a list is given index 0 will be used for class 0, etc. If the list is of the same length
         as the number of predictions each example will get their own marker
+
     sizes : float or list of float, optional
         Size(s) to use for all predictions or for predictions for each class
+
     title : str, optional
         A title to add to the figure (default None)
+
     order : {'freq', 'class', 'label', None}
         Order in which the points are plotted, options:
         'freq' : plot each half of the plot independently, choosing the order by
             the frequency of each class - so the smallest class is plotted last.
             This will make it less likely that outliers are hidden by points plotted later
         'class' / 'label' / None : Plot based on order of classes, i.e. plot class 0, 1, 2,..
+
     x_label : str, optional
         label for the x-axis, default is 'p-value {class x}' where x is based on the `cols` parameter
         If None is given, no y-label is added to the figure
+
     y_label : str, optional
         label for the y-axis, default is 'p-value {class y}' where y is based on the `cols` parameter.
         If None is given, no y-label is added to the figure
+
     add_legend : bool, optional
         If a legend should be added to the figure (Default True)
+
     fontargs : dict, optional
         Font arguments passed to matplotlib
+
+    tight_layout : bool, optional
+        Set `tight_layout` on the matplotlib Figure object
+
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
     
@@ -310,6 +329,9 @@ def plot_pvalues(y_true,
             ax.set_title(title, {'fontsize': 'x-large'})
         else:
             ax.set_title(title, **fontargs)
+    
+    if tight_layout:
+        fig.tight_layout()
 
     return fig
 
@@ -328,6 +350,7 @@ def plot_calibration_curve(y_true,
                             chart_padding=None,
                             plot_all_labels=True,
                             title=None,
+                            tight_layout=True,
                             **kwargs):
     
     """**Classification** - Create a calibration curve
@@ -375,6 +398,12 @@ def plot_calibration_curve(y_true,
 
     plot_all_labels : boolean, optional
         Plot the error rates for each class (default True). If False, only the 'overall' error rate is plotted
+
+    title : str, optional
+        Optional title that will be printed in 'x-large' font size (default None)
+
+    tight_layout : bool, optional
+        Set `tight_layout` on the matplotlib Figure object
 
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
@@ -433,6 +462,9 @@ def plot_calibration_curve(y_true,
     if title is not None:
         ax.set_title(title, {'fontsize': 'x-large'})
     
+    if tight_layout:
+        error_fig.tight_layout()
+    
     return error_fig
 
 def plot_label_distribution(y_true,
@@ -447,6 +479,7 @@ def plot_label_distribution(y_true,
                             cm=None,
                             display_incorrects=False,
                             mark_best=True,
+                            tight_layout=True,
                             **kwargs):
     """**Classification** - Create a stacked plot with label ratios
     
@@ -489,6 +522,9 @@ def plot_label_distribution(y_true,
 
     mark_best : boolean
         Mark the best significance value with a line and textbox (default True)
+    
+    tight_layout : bool, optional
+        Set `tight_layout` on the matplotlib Figure object
 
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
@@ -602,6 +638,9 @@ def plot_label_distribution(y_true,
     if title is not None:
         ax.set_title(title, {'fontsize': 'x-large'})
     
+    if tight_layout:
+        fig.tight_layout()
+    
     return fig
 
 
@@ -611,6 +650,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
                                   title=None,
                                   bubble_size_scale_factor = 1,
                                   color_scheme = 'prediction_size',
+                                  tight_layout = True,
                                   **kwargs):
     """**Classification** - Create a Confusion matrix bubble plot 
 
@@ -636,6 +676,9 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
         'prediction_size':=Color single/multi/empty in different colors
         'label'/'class':=Each class colored differently
         'full':=Correct single, correct multi, incorrect single, incorrect multi and empty colored differently
+    
+    tight_layout : bool, optional
+        Set `tight_layout` on the matplotlib Figure object
 
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
@@ -722,6 +765,8 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
             zi = round(zi,2)
         ax.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
                  textcoords="offset points", ha="left", va="center")
+    if tight_layout:
+        fig.tight_layout()
     
     return fig
 
@@ -732,6 +777,7 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
                                     title=None,
                                     cmap=None,
                                     cbar_kws=None,
+                                    tight_layout=True,
                                     **kwargs):
     """**Classification** - Plots the Conformal Confusion Matrix in a Heatmap
     
@@ -756,6 +802,9 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
 
     cbar_kws : dict, optional
         Arguments passed to the color-bar element
+    
+    tight_layout : bool, optional
+        Set `tight_layout` on the matplotlib Figure object
 
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
@@ -779,6 +828,9 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
         ax.set_title(title, fontdict={'fontsize':'x-large'})
     ax = sns.heatmap(confusion_matrix, ax=ax, annot=True, cmap=cmap, cbar_kws=cbar_kws, **kwargs)
     ax.set(xlabel='Predicted', ylabel='Observed')
+
+    if tight_layout:
+        fig.tight_layout()
     
     return fig
 
