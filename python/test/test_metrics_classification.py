@@ -19,7 +19,7 @@ class TestConfusionMatrix(unittest.TestCase):
         tr = np.array([0,0,0,0,0])
         expected_CM = np.array([[2, 0], [1,0], [1,0], [1,0]])
         
-        cm = calc_confusion_matrix(tr,p_vals_m, sign=0.2)
+        cm = confusion_matrix(tr,p_vals_m, sign=0.2)
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
     
     def test_small_binary_ex(self):
@@ -32,7 +32,7 @@ class TestConfusionMatrix(unittest.TestCase):
             [0,1]
             ])
 
-        cm = calc_confusion_matrix(tr,p_vals_m, sign=0.2)
+        cm = confusion_matrix(tr,p_vals_m, sign=0.2)
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
     
     def test_with_custom_labels(self):
@@ -41,7 +41,7 @@ class TestConfusionMatrix(unittest.TestCase):
         custom_labels = ['Mutagen', 'Nonmutagen']
         expected_CM = np.array([[1, 1], [1,0], [1,0], [0,1]])
 
-        cm = calc_confusion_matrix(tr,p_vals_m, sign=0.2, labels=custom_labels)
+        cm = confusion_matrix(tr,p_vals_m, sign=0.2, labels=custom_labels)
         self.assertEqual(cm.shape, expected_CM.shape)
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
 
@@ -63,7 +63,7 @@ class TestConfusionMatrix(unittest.TestCase):
         )
         true_l = np.array([0, 1, 2, 0])
         custom_labels = [4, 5, 6]
-        cm = calc_confusion_matrix(true_l,p_vals_m, sign=0.2, labels=custom_labels)
+        cm = confusion_matrix(true_l,p_vals_m, sign=0.2, labels=custom_labels)
 
         expected_CM = np.array([
             [0,0,0],
@@ -87,7 +87,7 @@ class TestConfusionMatrix(unittest.TestCase):
         )
         true_l = np.array([0, 1, 2, 0])
         custom_labels = [4, 5, 6]
-        cm = calc_confusion_matrix(true_l,p_vals_m, sign=0.2, labels=custom_labels, normalize_per_class=True)
+        cm = confusion_matrix(true_l,p_vals_m, sign=0.2, labels=custom_labels, normalize_per_class=True)
         #print(cm)
         expected_CM = np.array([
             [0,0,0],
@@ -111,44 +111,50 @@ class TestObservedMetrics(unittest.TestCase):
         self.m_true_labels = multiclass_data[:,:1].astype(np.int)
 
     
-    def test_error_rate(self):
+    def test_fraction_errors(self):
         # Taken from the values Ulf gave for this dataset
         sign = .25
-        overall, (e0, e1) = calc_error_rate(self.true_labels, self.p_values, sign)
+        overall, (e0, e1) = frac_error(self.true_labels, self.p_values, sign)
         self.assertAlmostEqual(0.1845, round(overall, 4))
         self.assertAlmostEqual(.24, round(e0,3))
         self.assertAlmostEqual(.12, round(e1,3))
 
         sign=.2
-        overall, (e0, e1) = calc_error_rate(self.true_labels, self.p_values, sign)
+        overall, (e0, e1) = frac_error(self.true_labels, self.p_values, sign)
         self.assertAlmostEqual(.1459, round(overall, 4))
         self.assertAlmostEqual(.2, round(e0,3))
         self.assertAlmostEqual(1-0.917, round(e1,3))
         
         sign=.15
-        overall, (e0, e1) = calc_error_rate(self.true_labels, self.p_values, sign)
+        overall, (e0, e1) = frac_error(self.true_labels, self.p_values, sign)
         self.assertAlmostEqual(.12, round(overall, 3))
         self.assertAlmostEqual(1-.84, round(e0,3))
         self.assertAlmostEqual(1-.926, round(e1,3))
     
     def test_single_label_ext(self):
         for s in np.arange(0,1,0.1):
-            correct_s, incorrect_s = calc_single_label_preds_ext(self.true_labels, self.p_values, s)
-            all_single = calc_single_label_preds(self.p_values, s)
+            overall, correct_s, incorrect_s = frac_single_label_preds(self.true_labels, self.p_values, s)
+            all_single, = frac_single_label_preds(None, self.p_values, s)
             self.assertAlmostEqual(all_single, correct_s+incorrect_s)
+            # self.assertIsNone(N0)
+            # self.assertIsNone(N1)
     
     def test_multilabel_ext(self):
         for s in np.arange(0,1,0.1):
-            correct_m, incorrect_m = calc_multi_label_preds_ext(self.true_labels, self.p_values, s)
-            all_m = calc_multi_label_preds(self.p_values, s)
+            overall, correct_m, incorrect_m = frac_multi_label_preds(self.true_labels, self.p_values, s)
+            all_m, = frac_multi_label_preds(None, self.p_values, s)
             self.assertAlmostEqual(all_m, correct_m+incorrect_m)
             self.assertEqual(0, incorrect_m) # For binary - all multi-label are always correct!
+            # self.assertIsNone(N0)
+            # self.assertIsNone(N1)
     
     def test_multilabel_ext_3class(self):
         for s in np.arange(0,.1,0.01):
-            correct_m, incorrect_m = calc_multi_label_preds_ext(self.m_true_labels, self.m_p_values, s)
-            all_m = calc_multi_label_preds(self.m_p_values, s)
+            overall, correct_m, incorrect_m = frac_multi_label_preds(self.m_true_labels, self.m_p_values, s)
+            all_m, = frac_multi_label_preds(None, self.m_p_values, s)
             self.assertAlmostEqual(all_m, correct_m+incorrect_m)
+            # self.assertIsNone(N0)
+            # self.assertIsNone(N1)
     
     def test_multilabel_ext_synthetic(self):
         p = np.array([
@@ -158,13 +164,15 @@ class TestObservedMetrics(unittest.TestCase):
             [0.1,0.2,0.3,0.5],
         ])
         s = 0.09
-        correct_m, incorrect_m = calc_multi_label_preds_ext([3,3,3,3], p, s)
+        all_m, correct_m, incorrect_m = frac_multi_label_preds([3,3,3,3], p, s)
         self.assertEqual(1, correct_m) # All predicted and all correct
         self.assertEqual(0, incorrect_m)
+        self.assertEqual(all_m, correct_m + incorrect_m)
 
         s = 0.11
-        correct_m, incorrect_m = calc_multi_label_preds_ext([0,0,0,3], p, s)
-        all_m = calc_multi_label_preds(p, s)
+        all_m, correct_m, incorrect_m = frac_multi_label_preds([0,0,0,3], p, s)
+        self.assertEqual(all_m, correct_m + incorrect_m)
+        all_m, = frac_multi_label_preds(None, p, s)
         self.assertEqual( .25, correct_m)
         self.assertEqual( .75, incorrect_m)
         self.assertEqual(all_m, incorrect_m+correct_m)
@@ -198,58 +206,58 @@ class TestUnobMetrics(unittest.TestCase):
 
     def test_single_label_preds(self):
         sign = 0.25
-        self.assertAlmostEqual(.974, round(calc_single_label_preds(self.p_values, sign),3))
+        self.assertAlmostEqual(.974, round(frac_single_label_preds(None, self.p_values, sign)[0],3))
         sign = 0.2
-        self.assertAlmostEqual(.893, round(calc_single_label_preds(self.p_values, sign),3))
+        self.assertAlmostEqual(.893, round(frac_single_label_preds(None,self.p_values, sign)[0],3))
         sign = 0.15
-        self.assertAlmostEqual(.79, round(calc_single_label_preds(self.p_values, sign),3))
+        self.assertAlmostEqual(.79, round(frac_single_label_preds(None,self.p_values, sign)[0],3))
 
     def test_f_criteria(self):
-        self.assertAlmostEqual(mean([.05, .03, .15,.03]),calc_f_criteria(self.pvals_2))
-        self.assertAlmostEqual(mean([.3, .48, .2, .79, .25]),calc_f_criteria(self.pvals_3))
-        self.assertAlmostEqual(mean([.5, .58, .7]),calc_f_criteria(self.pvals_4))
+        self.assertAlmostEqual(mean([.05, .03, .15,.03]),f_criteria(self.pvals_2))
+        self.assertAlmostEqual(mean([.3, .48, .2, .79, .25]),f_criteria(self.pvals_3))
+        self.assertAlmostEqual(mean([.5, .58, .7]),f_criteria(self.pvals_4))
 
     def test_u_criterion(self):
-        self.assertAlmostEqual(mean([.05, .03, .15,.03]),calc_u_criterion(self.pvals_2))
-        self.assertAlmostEqual(mean([.25, .45, .15, .76, .23]),calc_u_criterion(self.pvals_3))
-        self.assertAlmostEqual(mean([.25, .45, .5]),calc_u_criterion(self.pvals_4))
+        self.assertAlmostEqual(mean([.05, .03, .15,.03]),u_criterion(self.pvals_2))
+        self.assertAlmostEqual(mean([.25, .45, .15, .76, .23]),u_criterion(self.pvals_3))
+        self.assertAlmostEqual(mean([.25, .45, .5]),u_criterion(self.pvals_4))
     
     def test_n_criterion(self):
         # sig = 0.01 > all labels predicted!
         sig = 0.01
-        self.assertEqual(2,calc_n_criterion(self.pvals_2, sig))
-        self.assertEqual(3,calc_n_criterion(self.pvals_3, sig))
-        self.assertEqual(4,calc_n_criterion(self.pvals_4, sig))
+        self.assertEqual(2,n_criterion(self.pvals_2, sig))
+        self.assertEqual(3,n_criterion(self.pvals_3, sig))
+        self.assertEqual(4,n_criterion(self.pvals_4, sig))
         # sig = 0.1 - most labels predicted
         sig = 0.1
-        self.assertAlmostEqual(mean([1,1,2,1]),calc_n_criterion(self.pvals_2, sig))
-        self.assertEqual(2,calc_n_criterion(self.pvals_3, sig))
-        self.assertEqual(mean([3,2,3]),calc_n_criterion(self.pvals_4, sig))
+        self.assertAlmostEqual(mean([1,1,2,1]),n_criterion(self.pvals_2, sig))
+        self.assertEqual(2,n_criterion(self.pvals_3, sig))
+        self.assertEqual(mean([3,2,3]),n_criterion(self.pvals_4, sig))
         # sig = 0.5 - few labels
         sig = 0.5
-        self.assertAlmostEqual(.5,calc_n_criterion(self.pvals_2, sig))
-        self.assertAlmostEqual(mean([1,1,1,2,0]),calc_n_criterion(self.pvals_3, sig))
-        self.assertAlmostEqual(1,calc_n_criterion(self.pvals_4, sig))
+        self.assertAlmostEqual(.5,n_criterion(self.pvals_2, sig))
+        self.assertAlmostEqual(mean([1,1,1,2,0]),n_criterion(self.pvals_3, sig))
+        self.assertAlmostEqual(1,n_criterion(self.pvals_4, sig))
         # sig = 1.0 - no labels predicted
         sig = 1.0
-        self.assertEqual(0,calc_n_criterion(self.pvals_2, sig))
-        self.assertEqual(0,calc_n_criterion(self.pvals_3, sig))
-        self.assertEqual(0,calc_n_criterion(self.pvals_4, sig))
+        self.assertEqual(0,n_criterion(self.pvals_2, sig))
+        self.assertEqual(0,n_criterion(self.pvals_3, sig))
+        self.assertEqual(0,n_criterion(self.pvals_4, sig))
 
     def test_s_criterion(self):
-        self.assertAlmostEqual(mean([.3, .48, .8, .95]),calc_s_criterion(self.pvals_2))
-        self.assertAlmostEqual(mean([.97, 1.28, .85, 1.71, .75]),calc_s_criterion(self.pvals_3))
-        self.assertAlmostEqual(mean([1.17, 1.38, 1.35]),calc_s_criterion(self.pvals_4))
+        self.assertAlmostEqual(mean([.3, .48, .8, .95]),s_criterion(self.pvals_2))
+        self.assertAlmostEqual(mean([.97, 1.28, .85, 1.71, .75]),s_criterion(self.pvals_3))
+        self.assertAlmostEqual(mean([1.17, 1.38, 1.35]),s_criterion(self.pvals_4))
 
     def test_confidence(self):
-        self.assertAlmostEqual(mean([.95, .97, .85, .97]),calc_confidence(self.pvals_2))
-        self.assertAlmostEqual(mean([.75, .55, .85, .24, .77]),calc_confidence(self.pvals_3))
-        self.assertAlmostEqual(mean([.75, .55, .5]),calc_confidence(self.pvals_4))
+        self.assertAlmostEqual(mean([.95, .97, .85, .97]),cp_confidence(self.pvals_2))
+        self.assertAlmostEqual(mean([.75, .55, .85, .24, .77]),cp_confidence(self.pvals_3))
+        self.assertAlmostEqual(mean([.75, .55, .5]),cp_confidence(self.pvals_4))
     
     def test_credibility(self):
-        self.assertAlmostEqual(mean([.25, .45,.65, .92]),calc_credibility(self.pvals_2))
-        self.assertAlmostEqual(mean([.67, .8, .65, .92, .5]),calc_credibility(self.pvals_3))
-        self.assertAlmostEqual(mean([.67, .8, .65]),calc_credibility(self.pvals_4))
+        self.assertAlmostEqual(mean([.25, .45,.65, .92]),cp_credibility(self.pvals_2))
+        self.assertAlmostEqual(mean([.67, .8, .65, .92, .5]),cp_credibility(self.pvals_3))
+        self.assertAlmostEqual(mean([.67, .8, .65]),cp_credibility(self.pvals_4))
     
 
 

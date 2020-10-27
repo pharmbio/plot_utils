@@ -10,14 +10,14 @@ from pharmbio.cp import metrics,plotting
 my_data = np.genfromtxt('resources/transporters.p-values.csv', delimiter=';', skip_header=1)
 true_labels_2_class = (my_data[:,1] == 1).astype(np.int16)
 p_vals_2_class = my_data[:,[2,3]]
-cm_2_class_015 = metrics.calc_confusion_matrix( true_labels=true_labels_2_class, p_values=p_vals_2_class, sign=0.15 )
-cm_2_class_075 = metrics.calc_confusion_matrix( true_labels=true_labels_2_class, p_values=p_vals_2_class, sign=0.75 )
+cm_2_class_015 = metrics.confusion_matrix( true_labels_2_class, p_vals_2_class, sign=0.15 )
+cm_2_class_075 = metrics.confusion_matrix( true_labels_2_class, p_vals_2_class, sign=0.75 )
 
 # 3 class
 data3class = np.genfromtxt('resources/multiclass.csv', delimiter=',', skip_header=0)
 true_labels_3_class = data3class[:,0].astype(np.int16)
 p_vals_3_class = data3class[:,1:]
-cm_3_class_015 = metrics.calc_confusion_matrix( true_labels=true_labels_3_class, p_values=p_vals_3_class, sign=0.15 )
+cm_3_class_015 = metrics.confusion_matrix( true_labels_3_class, p_vals_3_class, sign=0.15 )
 # print(type(true_labels_3class))
 
 

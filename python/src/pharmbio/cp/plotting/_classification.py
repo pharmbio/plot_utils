@@ -3,14 +3,14 @@ import matplotlib.pyplot as plt
 import logging
 import math
 import numpy as np
+from sklearn.utils import check_consistent_length
 import pandas as pd
 
 # Package stuff
-from . import utils
-# import .utils as utils
-from .metrics import calc_error_rate,calc_single_label_preds
-from .metrics import calc_multi_label_preds
-from .metrics import calc_multi_label_preds_ext,calc_single_label_preds_ext
+from ..utils import *
+
+from ..metrics import frac_error, frac_single_label_preds
+from ..metrics import frac_multi_label_preds
 
 
 __using_seaborn = False
@@ -37,46 +37,14 @@ __default_incorr_multi_label_color = __default_color_map.pop(2)
 ### INTERNAL UTILS FUNCTIONS
 ####################################
 
-def _get_sign_vals(sign_vals, sign_min=0,sign_max=1,sign_step=0.01):
-    '''Internal function for generation of a list of significance values
-    
-    Returns
-    -------
-    list of float
-    '''
-    
-    # prefer an explict list of values
-    if sign_vals is not None:
-        if not isinstance(sign_vals, list):
-            raise TypeError('parameter sign_vals must be a list of floats')
-        if len(sign_vals) < 2:
-            raise ValueError('parameter sign_vals must be a list with more than one value')
-        # Validate the given significance values
-        sign_vals = sorted(sign_vals)
-        for sign in sign_vals:
-            if sign > 1 or sign < 0:
-                raise ValueError('Significance value must be in the range [0,1]')
-    else:
-        # Do some validation
-        if sign_min<0:
-            raise ValueError('sign_min must be >= 0')
-        if sign_max > 1:
-            raise ValueError('sign_min must be <= 1')
-        if sign_max < sign_min:
-            raise ValueError('sign_max < sign_min not allowed')
-        if sign_step < 1e-4 or sign_step > .5:
-            raise ValueError('sign_step must be in the range [1e-4, 0.5]')
-        sign_vals = list(np.arange(sign_min,sign_max,sign_step))
-        if sign_vals[-1] < sign_max:
-            sign_vals.append(sign_max)
-    return sign_vals
-
 def _get_fig_and_axis(ax, fig_size = (10,8)):
     '''Internal function for instantiating a Figure / axes object
     
     Returns
     -------
-    Figure, axes
+    fig : Figure
+    
+    ax : matplotlib axes
     '''
     
     if ax is None:
@@ -125,7 +93,7 @@ def _get_default_labels(labels, unique_labels):
 ### CLASSIFICATION
 ####################################
 
-def plot_pvalues(true_labels,
+def plot_pvalues(y_true,
                     p_values,
                     cols = [0,1],
                     labels = None,
@@ -141,14 +109,14 @@ def plot_pvalues(true_labels,
                     add_legend = True,
                     fontargs = None,
                     **kwargs):
-    r"""Plot p-values agains each other
+    """Plot p-values agains each other
 
     Plot p-values against each other, switch the axes by setting the `cols` parameter
     and handle multi-class predictions by deciding which p-values should be plotted.
     
     Parameters
     ----------
-    true_labels : 1D numpy array, list or pandas Series
+    y_true : 1D numpy array, list or pandas Series
         True labels
     p_values : 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
@@ -199,9 +167,10 @@ def plot_pvalues(true_labels,
     matplotlib.colors.ListedColormap
     """
     # Verify and convert to correct format
-    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
-    unique_labels = np.sort(np.unique(true_labels).astype(int))
-    p_values = utils._as_numpy2D(p_values, 'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
+    unique_labels = np.sort(np.unique(y_true).astype(int))
+    p_values = to_numpy2D(p_values, 'p_values')
+    check_consistent_length(y_true,p_values)
 
     n_class = p_values.shape[1]
 
@@ -251,7 +220,7 @@ def plot_pvalues(true_labels,
     if order is None or (order.lower() == 'class' or order.lower() == 'label') :
         # Use the order of the labels simply 
         for lab in unique_labels:
-            label_filter = np.array(true_labels == lab)
+            label_filter = np.array(y_true == lab)
             x = p_values[label_filter, cols[0]]
             y = p_values[label_filter, cols[1]]
             ax.scatter(x, y, 
@@ -270,7 +239,7 @@ def plot_pvalues(true_labels,
         num_per_label = []
         # Compute the order of classes to plot
         for lab in unique_labels:
-            label_filter = np.array(true_labels == lab)
+            label_filter = np.array(y_true == lab)
             x = p_values[label_filter, cols[0]]
             y = p_values[label_filter, cols[1]]
             num_per_label.append(len(x))
@@ -286,7 +255,7 @@ def plot_pvalues(true_labels,
         lab_order, handles = [], []
         ul_sorting = np.argsort(num_ul)[::-1]
         for lab in unique_labels[ul_sorting]:
-            label_filter = np.array(true_labels == lab)
+            label_filter = np.array(y_true == lab)
             x = p_values[label_filter, cols[0]]
             y = p_values[label_filter, cols[1]]
             upper_left_filter = y >= x
@@ -303,7 +272,7 @@ def plot_pvalues(true_labels,
         # Plot the lower-right section
         lr_sorting = np.argsort(num_lr)[::-1]
         for lab in unique_labels[lr_sorting]:
-            label_filter = np.array(true_labels == lab)
+            label_filter = np.array(y_true == lab)
             x = p_values[label_filter, cols[0]]
             y = p_values[label_filter, cols[1]]
             lower_right_filter = y < x
@@ -345,7 +314,7 @@ def plot_pvalues(true_labels,
     return fig
 
 
-def plot_calibration_curve(true_labels,
+def plot_calibration_curve(y_true,
                             p_values,
                             labels = None,
                             ax = None,
@@ -361,44 +330,58 @@ def plot_calibration_curve(true_labels,
                             title=None,
                             **kwargs):
     
-    r"""Create a calibration curve **(Classification)**
+    """**Classification** - Create a calibration curve
     
     Parameters
     ----------
-    true_labels : list or 1D numpy array
+    y_true : list or 1D numpy array
         The true labels (with values 0, 1, etc for each class)
+
     p_values : A 2D numpy array
         P-values, first column with p-value for class 0, second for class 1, ..
+
     labels : list of str, optional
         Descriptive labels for the classes
+
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
+
     fig_size : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
+
     title : str, optional
         A title to add to the figure (default None)
+
     sign_min : float range [0,1], optional
         The smallest significance level to include (default 0)
+
     sign_max : float range [0,1], optional
         The largest significance level to include (default 1)
+
     sign_step : float in range [1e-4, 0.5], optional
         Spacing between evaulated significance levels (default 0.01)
+
     sign_vals : list of float, optional
         A list of significance values to use, the `significance_` values will be ignored if this parameter was passed (default None)
+
     cm : color, list of colors or ListedColorMap, optional
         The colors to use. First color will be for class 0, second for class 1, ..
+
     overall_color : color, optional
         The color to use for the overall error rate (Default 'black')
+
     chart_padding : float, optional
         Padding added to the drawing area (default None will add 2.5% of padding)
+
     plot_all_labels : boolean, optional
         Plot the error rates for each class (default True). If False, only the 'overall' error rate is plotted
+
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
     
     Returns
     -------
-    Figure
+    fig : Figure
         matplotlib.figure.Figure object
     
     See Also
@@ -407,13 +390,14 @@ def plot_calibration_curve(true_labels,
     """
     
     # Create a list with all significances 
-    sign_vals = _get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
+    sign_vals = get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
     
     # Verify and convert to correct format
-    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
-    unique_labels = np.sort(np.unique(true_labels).astype(int))
-    p_values = utils._as_numpy2D(p_values, 'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
+    unique_labels = np.sort(np.unique(y_true).astype(int))
+    p_values = to_numpy2D(p_values, 'p_values')
     labels = _get_default_labels(labels, unique_labels)
+    check_consistent_length(y_true,p_values)
 
     if chart_padding is None:
         chart_padding = (sign_vals[-1] - sign_vals[0])*0.025
@@ -423,7 +407,7 @@ def plot_calibration_curve(true_labels,
         label_based_rates = np.zeros((len(sign_vals), p_values.shape[1]))
     
     for ind, s in enumerate(sign_vals):
-        overall, label_based = calc_error_rate(true_labels,p_values,s)
+        overall, label_based = frac_error(y_true,p_values,s)
         overall_error_rates.append(overall)
         if plot_all_labels:
             # sets all values in a row
@@ -451,7 +435,7 @@ def plot_calibration_curve(true_labels,
     
     return error_fig
 
-def plot_label_distribution(true_labels,
+def plot_label_distribution(y_true,
                             p_values,
                             ax=None,
                             fig_size=(10,8),
@@ -464,42 +448,54 @@ def plot_label_distribution(true_labels,
                             display_incorrects=False,
                             mark_best=True,
                             **kwargs):
-    r"""Create a stacked plot with label ratios **(Classification)**
+    """**Classification** - Create a stacked plot with label ratios
     
     Parameters
     ----------
-    true_labels : A list or 1D numpy array
+    y_true : A list or 1D numpy array
         The true classes/labels using values 0, 1, etc for each class
+
     p_values : 2D numpy array
         The predicted p-values, first column for the class 0, second for class 1, ..
+
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
+
     fig_size : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
+
     title : str, optional
         A title to add to the figure (default None)
+
     sign_min : float range [0,1], optional
         The smallest significance level to include (default 0)
+
     sign_max : float range [0,1], optional
         The largest significance level to include (default 1)
+
     sign_step : float in range [1e-4, 0.5], optional
         Spacing between evaulated significance levels (default 0.01)
+
     sign_vals : list of float, optional
         Significance values to use, the `significance_` parameters will be ignored if this 
         parameter was passed (default None)
+
     cm : list of colors or ListedColorMap, optional
         Colors to use, given in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  
         (if `display_incorrects`=True a list of at least 5 is required, otherwise 3 is sufficient)
+
     display_incorrects : boolean, optional
         Plot the incorrect predictions intead of only empty/single/multi-label predictions (default True)
+
     mark_best : boolean
         Mark the best significance value with a line and textbox (default True)
+
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
     
     Returns
     -------
-    Figure
+    fig : Figure
         matplotlib.figure.Figure object
     """
     
@@ -510,11 +506,12 @@ def plot_label_distribution(true_labels,
         pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color, __default_incorr_single_label_color,__default_incorr_multi_label_color]
 
     # Create a list with all significances
-    sign_vals = _get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
+    sign_vals = get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
 
     # Validate format
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
+    p_values = to_numpy2D(p_values,'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
+    check_consistent_length(y_true,p_values)
     
     # Calculate the values
     s_label = []
@@ -525,8 +522,8 @@ def plot_label_distribution(true_labels,
     highest_single_ratio = -1
     best_sign = -1
     for s in sign_vals:
-        s_corr, s_incorr = calc_single_label_preds_ext(true_labels, p_values,s)
-        m_corr, m_incorr = calc_multi_label_preds_ext(true_labels, p_values, s)
+        _, s_corr, s_incorr = frac_single_label_preds(y_true, p_values,s)
+        _, m_corr, m_incorr = frac_multi_label_preds(y_true, p_values, s)
         if display_incorrects:
             s_l = s_corr
             m_l = m_corr
@@ -615,7 +612,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
                                   bubble_size_scale_factor = 1,
                                   color_scheme = 'prediction_size',
                                   **kwargs):
-    r"""Create a Confusion matrix bubble plot **(Classification)**
+    """**Classification** - Create a Confusion matrix bubble plot 
 
     Render a confusion matrix with bubbles, the size of the bubbles are related to the frequency
     of that prediction type. The confusion matrix is made at a specific significance level. 
@@ -623,24 +620,29 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     Parameters
     ----------
     confusion_matrix : DataFrame
-        Confusion matrix in pandas DataFrame, from `metrics.calc_confusion_matrix`
+        Confusion matrix in pandas DataFrame, from `metrics.confusion_matrix`
+
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
+
     fig_size : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
+
     bubble_size_scale_factor : number, optional
         Scaling to be applied on the size of the bubbles, default scale factor works OK for the default figure size
-    color_scheme : str, optional
+
+    color_scheme : { None, 'None', 'prediction_size', 'label', 'class', 'full' }
         None/'None':=All in the same color 
         'prediction_size':=Color single/multi/empty in different colors
         'label'/'class':=Each class colored differently
         'full':=Correct single, correct multi, incorrect single, incorrect multi and empty colored differently
+
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
     
     Returns
     -------
-    Figure
+    fig : Figure
         matplotlib.figure.Figure object
     
     See Also
@@ -731,7 +733,7 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
                                     cmap=None,
                                     cbar_kws=None,
                                     **kwargs):
-    r"""Plots the Conformal Confusion Matrix in a Heatmap **(Classification)**
+    """**Classification** - Plots the Conformal Confusion Matrix in a Heatmap
     
     Note that this method requires the Seaborn to be available and will fail otherwise
     
@@ -739,22 +741,28 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
     ----------
     confusion_matrix : DataFrame
         Confusion matrix in pandas DataFrame, from metrics.calc_confusion_matrix
+
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
+
     fig_size : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
+
     title : str, optional
         Optional title that will be printed in 'x-large' font size (default None)
+
     cmap : matplotlib colormap name or object, or list of colors, optional
         Colormap to use for the heatmap, argument passed to Seaborn heatmap
+
     cbar_kws : dict, optional
         Arguments passed to the color-bar element
+
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
     
     Returns
     -------
-    Figure
+    fig : Figure
         matplotlib.figure.Figure object
     
     See Also

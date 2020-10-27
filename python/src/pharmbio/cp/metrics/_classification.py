@@ -1,67 +1,56 @@
+"""CP Classification metrics
+
+Module with classification metrics for CP. See https://arxiv.org/abs/1603.04416 
+for references. Note that some metrics are 'unobserved' - i.e. a metric 
+that can be calculated without knowing the ground truth (correct) labels
+for all predictions. 
+
+"""
+
 import numpy as np
 import pandas as pd
 from collections import Counter
 
-from . import utils
+from ..utils import *
+from sklearn.utils import check_consistent_length
 
 _default_significance = 0.8
 
-####################################
-### UTILS
-####################################
-
-# def __convert_to_1D_or_raise_error(labels):
-#     error_obj = TypeError('labels argument must be either a list or numpy 1D array')
-#     if isinstance(labels, list):
-#         return np.array( [round(x) for x in labels] )
-#     elif isinstance(labels, np.ndarray):
-#         # Make sure the shape is correct
-#         if len(labels.shape) == 1:
-#             # 1D numpy - correct!
-#             return labels.astype(int)
-#         elif labels.shape[1] > 1:
-#             raise error_obj
-#         else:
-#             # convert to 1D array
-#             return np.squeeze(labels).astype(int)
-#     else:
-#         raise error_obj
-
-def _validate_shape(true_labels, p_values):
-    if (len(true_labels) != len(p_values)):
-        raise ValueError('parameters true_labels and p_values must have the same length')
-
-def _validate_sign(sign):
-    if not isinstance(sign, (int,float)):
-        raise TypeError('parameter sign must be a number')
-    if sign < 0 or sign >1:
-        raise ValueError('parameter sign must be in the range [0,1]')
 
 ######################################
-### CLASSIFICATION - OBSERVED METRICS
+### OBSERVED METRICS
 ######################################
 
 
-def calc_error_rate(true_labels, p_values, sign):
-    r"""Calculate the error rate **(classification)**
+def frac_error(y_true, p_values, sign):
+    """**Classification** - Calculate the fraction of errors
+
+    Calculate the fraction of erronious predictions at a given significance level `sign`
     
     Parameters
     ----------
-    true_labels : 1D numpy array, list or pandas Series
+    y_true : 1D numpy array, list or pandas Series
         True labels
+
     p_values : 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
+
     sign : float in [0,1]
         Significance the metric should be calculated for
     
     Returns
     -------
-    (overall_error_rate, label_wise_error_rates) 
+    frac_error : float
+        Overall fraction of errors
+
+    label_wise_fraction_error : array, shape = (n_classes,)
+        Fraction of errors for each true label, first index for class 0, ...
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
+    validate_sign(sign)
+    p_values = to_numpy2D(p_values,'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
     
-    _validate_shape(true_labels, p_values)
+    check_consistent_length(y_true, p_values)
 
     total_errors = 0
     # lists containing errors/counts for each class label
@@ -69,7 +58,7 @@ def calc_error_rate(true_labels, p_values, sign):
     label_wise_counts = [0] * p_values.shape[1]
     
     for test_ex in range(0,p_values.shape[0]):
-        ex_value = true_labels[test_ex]
+        ex_value = y_true[test_ex]
         #print(ex_value)
         if p_values[test_ex, ex_value] < sign:
             total_errors += 1
@@ -78,47 +67,76 @@ def calc_error_rate(true_labels, p_values, sign):
     
     label_wise_erro_rate = np.array(label_wise_errors) / np.array(label_wise_counts)
     
-    return (total_errors / true_labels.shape[0], label_wise_erro_rate)
+    return total_errors / y_true.shape[0], label_wise_erro_rate
 
 
- 
-    #true_labels = __convert_to_1D_or_raise_error(true_labels)
-    # 
-    #multi_labels = 0
-    #for i in range(0,p_values.shape[0]):
-    #    if (p_values[i,:] > sign).sum() > 1:
-    #        multi_labels += 1
-    #return multi_labels / len(true_labels)
-
-def calc_single_label_preds_ext(true_labels, p_values, sign):
-    r"""Calculate the fraction of single label predictions **(classification)**
-    
-    but calculating the correct and incorrect classifications
+def _unobs_frac_single_label_preds(p_values, sign):
+    """**Classification** - Calculate the fraction of single label predictions
     
     Parameters
     ----------
-    true_labels : 1D numpy array, list or pandas Series
-        True labels
+    p_values : array, 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+
+    sign : float in [0,1]
+        Significance the metric should be calculated for
+    
+    Returns
+    ------- 
+    score : float
+    """
+    validate_sign(sign)
+    p_values = to_numpy2D(p_values,'p_values')
+    
+    predictions = p_values > sign
+    return np.mean(np.sum(predictions, axis=1) == 1)
+
+def frac_single_label_preds(y_true, p_values, sign):
+    """**Classification** - Calculate the fraction of single label predictions
+    
+    It is possible to both calculate this as an observed and un-observed metric,
+    the `y_true` is given the function returns three values - if no true values
+    are known - only the fraction of multi-label predictions is returned. 
+    
+    Parameters
+    ----------
+    y_true : 1D numpy array, list, pandas Series or None
+        True labels or None. If given, the fraction of correct and incorrect 
+        single label predictions can be calculated as well. Otherwise this will
+        be calculated in an unobserved fashion.
+
     p_values : 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
+    
     sign : float in [0,1]
         Significance the metric should be calculated for
     
     Returns
     -------
-    (ratio correct single label, ratio incorrect single label) 
-    """
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
+    frac_single : float
+        Overall fraction of single-labelpredictio
     
-    _validate_shape(true_labels, p_values)
+    frac_correct_single : float, optional
+        Fraction of correct single label predictions, not returned if no `y_true` was given
+    
+    frac_incorrect_single : float, optional
+        Fraction of incorrect single label predictions, not returned if no `y_true` was given
+    """
+    # If no y_true - calculate in an un-observed fashion
+    if y_true is None:
+        return _unobs_frac_single_label_preds(p_values, sign),
+    
+    validate_sign(sign)
+    p_values = to_numpy2D(p_values,'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
+    check_consistent_length(y_true, p_values)
 
-    n_total = len(true_labels)
+    n_total = len(y_true)
 
     predictions = p_values > sign
     s_label_filter = np.sum(predictions, axis=1) == 1
     s_preds = predictions[s_label_filter]
-    s_trues = true_labels[s_label_filter]
+    s_trues = y_true[s_label_filter]
 
     n_corr = 0
     n_incorr = 0
@@ -128,34 +146,84 @@ def calc_single_label_preds_ext(true_labels, p_values, sign):
         else:
             n_incorr += 1 
     
-    return n_corr/n_total, n_incorr/n_total
+    return (n_corr+n_incorr)/n_total, n_corr/n_total, n_incorr/n_total
 
-def calc_multi_label_preds_ext(true_labels, p_values, sign):
-    r"""Calculate the fraction of multi-label predictions (classification), but calculating the correct and incorrect classifications
+def _unobs_frac_multi_label_preds(p_values, sign):
+    """**Classification** - Calculate the fraction of multi-label predictions
     
+    Calculates the fraction of multi-label predictions in an un-observed fashion - 
+    i.e. disregarding the true labels
+
     Parameters
     ----------
-    true_labels : 1D numpy array, list or pandas Series
-        True labels
-    p_values : 2D numpy array or DataFrame
+    p_values : array, 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
+
     sign : float in [0,1]
         Significance the metric should be calculated for
     
     Returns
     ------- 
-    (ratio correct multi-label, ratio incorrect multi-label) 
+    float
+
+    See Also
+    --------
+    frac_multi_label_preds
+
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
+    p_values = to_numpy2D(p_values,'p_values')
+    validate_sign(sign)
     
-    _validate_shape(true_labels, p_values)
-    n_total = len(true_labels)
+    predictions = p_values > sign
+    return np.mean(np.sum(predictions, axis=1) > 1)
+
+def frac_multi_label_preds(y_true, p_values, sign):
+    """**Classification** - Calculate the fraction of multi-label predictions
+    
+    It is possible to both calculate this as an observed and un-observed metric,
+    if the `y_true` is given the function returns three values - if no true values
+    are known - only the fraction of multi-label predictions is returned. 
+    
+    Parameters
+    ----------
+    y_true : 1D numpy array, list, pandas Series, optional
+        True labels or None. If given, the fraction of correct and incorrect 
+        multi-label predictions can be calculated as well. Otherwise this will
+        be calculated in an unobserved fashion
+    
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+
+    sign : float in [0,1]
+        Significance the metric should be calculated for
+    
+    Returns
+    ------- 
+    frac_multi_label : float
+        Fraction of multi-label predictions
+
+    frac_correct : float or None
+        Fraction of correct multi-label predictions (i.e. the true label is part of the set of predictions)
+        Not returned if no `y_true` was given
+
+    frac_incorrect : float or None
+        Fraction of incorrect multi-label predictions. Not returned if no `y_true` was given
+    """
+    # If no y_true - calculate in an un-observed fashion
+    if y_true is None:
+        return _unobs_frac_multi_label_preds(p_values, sign), 
+    
+    validate_sign(sign)
+    p_values = to_numpy2D(p_values,'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
+    check_consistent_length(y_true, p_values)
+    
+    n_total = len(y_true)
 
     predictions = p_values > sign
     m_label_filter = np.sum(predictions, axis=1) > 1
     m_preds = predictions[m_label_filter]
-    m_trues = true_labels[m_label_filter]
+    m_trues = y_true[m_label_filter]
 
     n_corr = 0
     n_incorr = 0
@@ -165,73 +233,76 @@ def calc_multi_label_preds_ext(true_labels, p_values, sign):
         else:
             n_incorr +=1 
     
-    return n_corr/n_total, n_incorr/n_total
+    return (n_corr+n_incorr)/n_total, n_corr/n_total, n_incorr/n_total
 
-
-def calc_OF(true_labels, p_values):
-    r"""Calculates the Observed Fuzziness
+def obs_fuzziness(y_true, p_values):
+    """**Classification** - Calculate the Observed Fuzziness (OF)
     
     Significance independent metric, smaller is better
     
     Parameters
     ----------
-    true_labels : 1D numpy array, list or pandas Series
+    y_true : 1D numpy array, list or pandas Series
         True labels
+
     p_values : 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
     
     Returns
     -------
-    float 
+    obs_fuzz : float 
+        Observed fuzziness
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
-    
-    _validate_shape(true_labels, p_values)
+    p_values = to_numpy2D(p_values,'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
+    check_consistent_length(y_true, p_values)
 
     of_sum = 0
     for i in range(0,p_values.shape[0]):
         # Mask the p-value of the true label
         p_vals_masked = np.ma.array(p_values[i,:], mask=False)
-        p_vals_masked.mask[true_labels[i]] = True
+        p_vals_masked.mask[y_true[i]] = True
         # Sum the remaining p-values
         of_sum += p_vals_masked.sum()
     
-    return of_sum / len(true_labels)
+    return of_sum / len(y_true)
 
-def calc_confusion_matrix(true_labels, 
+def confusion_matrix(y_true, 
                             p_values, 
                             sign, 
                             labels=None, 
                             normalize_per_class = False):
-    r"""Calculate a conformal confusion matrix **Classification**
+    """**Classification** - Calculate a conformal confusion matrix
     
     A conformal confusion matrix includes the number of predictions for each class, empty predition sets and
     multi-prediction sets.
 
     Parameters
     ----------
-    true_labels : 1D numpy array, list or pandas Series
+    y_true : 1D numpy array, list or pandas Series
         True labels
+    
     p_values : 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
+    
     sign : float in [0,1]
         Significance the confusion matrix should be calculated for
+    
     labels : list of str, optional
         Descriptive labels for the classes
+    
     normalize_per_class : bool, optional
         Normalizes the count so that each column sums to 1, good when visualizing imbalanced datasets (default False)
     
     Returns
     -------
-    pandas DataFrame
+    cm : pandas DataFrame
         The confusion matrix 
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    true_labels = utils._as_numpy1D_int(true_labels, 'true_labels')
-    
-    _validate_shape(true_labels, p_values)
-    _validate_sign(sign)
+    validate_sign(sign)
+    p_values = to_numpy2D(p_values,'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
+    check_consistent_length(y_true, p_values)
     
     predictions = p_values > sign
     
@@ -252,7 +323,7 @@ def calc_confusion_matrix(true_labels,
     for t in range(n_class):
         
         # Get the predictions for this class
-        t_filter = true_labels == t
+        t_filter = y_true == t
         t_preds = predictions[t_filter]
         
         # For every (single) predicted label - p
@@ -295,59 +366,12 @@ def calc_confusion_matrix(true_labels,
     return pd.DataFrame(result_matrix, columns=labels, index = row_labels)
 
 ########################################
-### CLASSIFICATION - UNOBSERVED METRICS
+### UNOBSERVED METRICS
 ########################################
 
-def calc_single_label_preds(p_values, sign):
-    r"""Calculate the fraction of single label predictions (classification)
-    
-    Parameters
-    ----------
-    p_values : array, 2D numpy array or DataFrame
-        The predicted p-values, first column for the class 0, second for class 1, ..
-    sign : float in [0,1]
-        Significance the metric should be calculated for
-    
-    Returns
-    ------- 
-    float
-    """
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    _validate_sign(sign)
-    
-    predictions = p_values > sign
-    return np.mean(np.sum(predictions, axis=1) == 1)
 
-def calc_multi_label_preds(p_values, sign):
-    r"""Calculate the fraction of multi-label predictions (classification)
-    
-    Parameters
-    ----------
-    p_values : array, 2D numpy array or DataFrame
-        The predicted p-values, first column for the class 0, second for class 1, ..
-    sign : float in [0,1]
-        Significance the metric should be calculated for
-    
-    Returns
-    ------- 
-    float
-    """
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    _validate_sign(sign)
-    
-    predictions = p_values > sign
-    return np.mean(np.sum(predictions, axis=1) > 1)
-
-# def __check_p_vals_correct_type(p_values):
-#     if not isinstance(p_values, np.ndarray):
-#         raise TypeError('p_values must be a numpy 2D array')
-#     if len(p_values.shape) < 2:
-#         raise TypeError('p_values must be a numpy 2D array')
-#     if p_values.shape[1] < 2:
-#         raise TypeError('p_values must be a numpy 2D array')
-
-def calc_credibility(p_values):
-    r"""CP Credibility
+def cp_credibility(p_values):
+    """**Classification** - CP Credibility
     
     Mean of the largest p-values
 
@@ -358,14 +382,15 @@ def calc_credibility(p_values):
     
     Returns
     ------- 
-    float
+    credibility : float
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
+    p_values = to_numpy2D(p_values,'p_values')
     sorted_matrix = np.sort(p_values, axis=1)
     return np.mean(sorted_matrix[:,-1]) # last index is the largest
 
-def calc_confidence(p_values):
-    r"""CP Confidence 
+def cp_confidence(p_values):
+    """**Classification** - CP Confidence 
+    
     Mean of 1-'second largest p-value'
 
     Parameters
@@ -375,14 +400,16 @@ def calc_confidence(p_values):
     
     Returns
     ------- 
-    float
+    confidence : float
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
+    p_values = to_numpy2D(p_values,'p_values')
     sorted_matrix = np.sort(p_values, axis=1)
     return np.mean(1-sorted_matrix[:,-2])
 
-def calc_s_criterion(p_values):
-    r"""S criterion - Mean of the sum of all pvalues
+def s_criterion(p_values):
+    """**Classification** - S criterion
+    
+    Mean of the sum of all p-values
 
     Parameters
     ----------
@@ -391,13 +418,13 @@ def calc_s_criterion(p_values):
     
     Returns
     ------- 
-    float
+    s_score : float
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
+    p_values = to_numpy2D(p_values,'p_values')
     return np.mean(np.sum(p_values, axis=1))
 
-def calc_n_criterion(p_values, sign=_default_significance):
-    r"""N criterion - 
+def n_criterion(p_values, sign=_default_significance):
+    """**Classification** - N criterion
     
     "Number" criterion - the average number of predicted labels. Significance dependent metric
 
@@ -408,14 +435,14 @@ def calc_n_criterion(p_values, sign=_default_significance):
     
     Returns
     -------
-    float
+    n_score : float
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
-    _validate_sign(sign)
+    p_values = to_numpy2D(p_values,'p_values')
+    validate_sign(sign)
     return np.mean(np.sum(p_values > sign, axis=1))
 
-def calc_u_criterion(p_values):
-    r"""U criterion - "Unconfidence"
+def u_criterion(p_values):
+    """**Classification** - U criterion - "Unconfidence"
 
     Smaller values are preferable
     
@@ -426,16 +453,17 @@ def calc_u_criterion(p_values):
     
     Returns
     ------- 
-    float
+    u_score : float
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
+    p_values = to_numpy2D(p_values,'p_values')
     sorted_matrix = np.sort(p_values, axis=1)
     return np.mean(sorted_matrix[:,-2])
 
-def calc_f_criteria(p_values):
-    r"""F criterion 
+def f_criteria(p_values):
+    """**Classification** - F criterion 
     
-    Average fuzziness. Average of the sum of all p-values appart from the largest one
+    Average fuzziness. Average of the sum of all p-values appart from the largest one.
+    Smaller values are preferable.
 
     Parameters
     ----------
@@ -444,9 +472,9 @@ def calc_f_criteria(p_values):
     
     Returns
     ------- 
-    float
+    f_score : float
     """
-    p_values = utils._as_numpy2D(p_values,'p_values')
+    p_values = to_numpy2D(p_values,'p_values')
     sorted_matrix = np.sort(p_values, axis=1)
     if sorted_matrix.shape[1] == 2:
         # Mean of only the smallest p-value
@@ -454,8 +482,3 @@ def calc_f_criteria(p_values):
     else:
         # Here we must take the sum of the values appart from the first column
         return np.mean(np.sum(sorted_matrix[:,:-1], axis=1))
-
-####################################
-### REGRESSION - TODO
-####################################
-
