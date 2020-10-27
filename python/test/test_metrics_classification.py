@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import unittest
 
 import sys
@@ -21,6 +22,14 @@ class TestConfusionMatrix(unittest.TestCase):
         
         cm = confusion_matrix(tr,p_vals_m, sign=0.2)
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
+        # test input as normal arrays instead
+        cm2 = confusion_matrix(tr.tolist(), p_vals_m.tolist(), sign=0.2)
+        self.assertTrue(cm.equals( cm2 ))
+        # Test with Pandas as input
+        pvals_pd = pd.DataFrame(p_vals_m)
+        tr_pd = pd.Series(tr)
+        cm3 = confusion_matrix(tr_pd, pvals_pd, sign=0.2)
+        self.assertTrue(cm.equals( cm3 ))
     
     def test_small_binary_ex(self):
         p_vals_m = np.array([[0.05, 0.85], [0.23, 0.1], [.1, .1], [.21, .21], [.3, 0.15]])
