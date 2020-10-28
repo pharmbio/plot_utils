@@ -654,6 +654,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
                                   figsize=(10,8),
                                   title=None,
                                   bubble_size_scale_factor = 1,
+                                  annotate = True,
                                   color_scheme = 'prediction_size',
                                   tight_layout = True,
                                   **kwargs):
@@ -675,6 +676,9 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
 
     bubble_size_scale_factor : number, optional
         Scaling to be applied on the size of the bubbles, default scale factor works OK for the default figure size
+    
+    annotate : boolean, optional
+        If the actual numbers should be printed next to each bubble.
 
     color_scheme : { None, 'None', 'prediction_size', 'label', 'class', 'full' }
         None/'None':=All in the same color 
@@ -765,11 +769,14 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     if title is not None:
         ax.set_title(title, {'fontsize': 'x-large'})
 
-    for xi, yi, zi, z_si in zip(x_coords, y_coords, sizes, sizes_scaled):
-        if isinstance(zi, float):
-            zi = round(zi,2)
-        ax.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
-                 textcoords="offset points", ha="left", va="center")
+    # Write the number for each bubble
+    if annotate is not None and annotate: 
+        for xi, yi, zi, z_si in zip(x_coords, y_coords, sizes, sizes_scaled):
+            if isinstance(zi, float):
+                zi = round(zi,2)
+            ax.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
+                    textcoords="offset points", ha="left", va="center")
+    
     if tight_layout:
         fig.tight_layout()
     
@@ -822,6 +829,9 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
     See Also
     --------
     metrics.calc_confusion_matrix : Calculating confusion matrix
+
+    seaborn.heatmap : Seaborn is used for generating the heatmap. Here you can find available parameters
+        for the `cbar_kws` and other possible customizations. 
     """
     
     if not using_seaborn:
