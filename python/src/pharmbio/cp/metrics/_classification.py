@@ -54,8 +54,8 @@ def frac_error(y_true, p_values, sign):
 
     total_errors = 0
     # lists containing errors/counts for each class label
-    label_wise_errors = [0] * p_values.shape[1]
-    label_wise_counts = [0] * p_values.shape[1]
+    label_wise_errors = np.zeros(p_values.shape[1], dtype=np.float) # get an exception if not having float
+    label_wise_counts = np.zeros(p_values.shape[1], dtype=np.int)
     
     for test_ex in range(0,p_values.shape[0]):
         ex_value = y_true[test_ex]
@@ -65,9 +65,11 @@ def frac_error(y_true, p_values, sign):
             label_wise_errors[ex_value] += 1
         label_wise_counts[ex_value] += 1
     
-    label_wise_erro_rate = np.array(label_wise_errors) / np.array(label_wise_counts)
+    label_wise_errors = np.divide(label_wise_errors, label_wise_counts, 
+        out=np.full_like(label_wise_errors,np.nan), 
+        where=np.array(label_wise_counts)!=0)
     
-    return total_errors / y_true.shape[0], label_wise_erro_rate
+    return float(total_errors) / y_true.shape[0], label_wise_errors
 
 
 def _unobs_frac_single_label_preds(p_values, sign):
@@ -314,13 +316,7 @@ def confusion_matrix(y_true,
     else:
         result_matrix = np.zeros((n_class+3, n_class))
     
-#    if labels is None:
     labels = get_str_labels(labels, get_n_classes(y_true,p_values))
-#    if len(labels) != n_class:
-#        raise ValueError('parameter labels must have the same length as the number of classes')
-     #list(range(n_class))
-#    elif len(labels) != n_class:
-#        raise ValueError('parameter labels must have the same length as the number of classes')
     
     # For every observed class - t
     for t in range(n_class):

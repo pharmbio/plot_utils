@@ -653,7 +653,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
                                   ax=None,
                                   figsize=(10,8),
                                   title=None,
-                                  bubble_size_scale_factor = 1,
+                                  scale_factor = 1,
                                   annotate = True,
                                   color_scheme = 'prediction_size',
                                   tight_layout = True,
@@ -674,7 +674,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
-    bubble_size_scale_factor : number, optional
+    scale_factor : number, optional
         Scaling to be applied on the size of the bubbles, default scale factor works OK for the default figure size
     
     annotate : boolean, optional
@@ -758,7 +758,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     # Convert the x and y coordinates to strings
     x_coords = np.array(x_coords, dtype=object).astype(str)
     y_coords = np.array(y_coords, dtype=object).astype(str)
-    sizes_scaled = bubble_size_scale_factor * 2500 * sizes / sizes.max()
+    sizes_scaled = scale_factor * 2500 * sizes / sizes.max()
     
     ax.scatter(x_coords, y_coords, s=sizes_scaled,c=colors,edgecolors='black',**kwargs)
 

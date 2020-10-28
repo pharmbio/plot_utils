@@ -85,8 +85,8 @@ class TestBubblePlot(unittest.TestCase):
         plt.show()
     
     def test_2_class(self):
-        fig2 = plotting.plot_confusion_matrix_bubbles(cm_2_class_015, annotate=False)
-        fig2.axes[0].set_title('Bubbles 2-class 0.15')
+        fig2 = plotting.plot_confusion_matrix_bubbles(cm_2_class_015, annotate=False, scale_factor=5.5, figsize=(6,7))
+        fig2.axes[0].set_title('Bubbles 2-class 0.15 - no annotation - scale 5.5')
         fig3 = plotting.plot_confusion_matrix_bubbles(cm_2_class_075)
         fig3.axes[0].set_title('Bubbles 2-class 0.75')
         plt.show()
