@@ -32,15 +32,24 @@ class TestPValuesPlot(unittest.TestCase):
         fig.axes[0].set_title('p0/p1 3-class')
         plt.show()
     
-    def test_3_cass_21(self):
+    def test_3_class_21(self):
         fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class, cols=[2,1])
         fig.axes[0].set_title('p2/p1 3-class')
         plt.show()
     
-    @unittest.expectedFailure
-    def test_cols_outside_range(self):
-        plotting.plot_pvalues(true_labels_2_class, p_values=p_vals_2_class, cols=[2,1])
+    def test_3_class_only_send_2pvals(self):
+        fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class[:,[0,1]])
+        fig.axes[0].set_title('p0/p1 3-class (2-vals sent)')
         plt.show()
+    
+    # @unittest.expectedFailure
+    def test_cols_outside_range(self):
+        with self.assertRaises(ValueError):
+            plotting.plot_pvalues(true_labels_2_class, p_values=p_vals_2_class, cols=[2,1])
+        # try:
+            
+        # except (ValueError)
+        # plt.show()
 
 class TestLabelDistributionPlot(unittest.TestCase):
 

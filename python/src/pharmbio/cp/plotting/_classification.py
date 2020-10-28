@@ -8,21 +8,22 @@ import pandas as pd
 
 # Package stuff
 from ..utils import *
+from ._utils import * # Sets seaborn etc if available 
 
 from ..metrics import frac_error, frac_single_label_preds
 from ..metrics import frac_multi_label_preds
 
 
-__using_seaborn = False
-# Try to import sns as they create somewhat nicer plots
-try:
-    import seaborn as sns
-    sns.set()
-    logging.debug('Using Seaborn plotting defaults')
-    __using_seaborn = True
-except ImportError as e:
-    logging.debug('Seaborn not available - using Matplotlib defaults')
-    pass 
+# __using_seaborn = False
+# # Try to import sns as they create somewhat nicer plots
+# try:
+#     import seaborn as sns
+#     sns.set()
+#     logging.debug('Using Seaborn plotting defaults')
+#     __using_seaborn = True
+# except ImportError as e:
+#     logging.debug('Seaborn not available - using Matplotlib defaults')
+#     pass 
 
 # Set some defaults that will be used amongst the plotting functions
 __default_color_map = list(mpl.rcParams['axes.prop_cycle'].by_key()['color'])
@@ -37,56 +38,56 @@ __default_incorr_multi_label_color = __default_color_map.pop(2)
 ### INTERNAL UTILS FUNCTIONS
 ####################################
 
-def _get_fig_and_axis(ax, fig_size = (10,8)):
-    '''Internal function for instantiating a Figure / axes object
+# def _get_fig_and_axis(ax, figsize = (10,8)):
+#     '''Internal function for instantiating a Figure / axes object
     
-    Returns
-    -------
-    fig : Figure
+#     Returns
+#     -------
+#     fig : Figure
     
-    ax : matplotlib axes
-    '''
+#     ax : matplotlib axes
+#     '''
     
-    if ax is None:
-        # No current axes, create a new Figure
-        if isinstance(fig_size, (int, float)):
-            fig = plt.figure(figsize = (fig_size, fig_size))
-        elif isinstance(fig_size, tuple):
-            fig = plt.figure(figsize = fig_size)
-        else:
-            raise TypeError('parameter fig_size must either be float or (float, float), was: ' +
-                str(type(fig_size)))
-        # Add an axes spanning the entire Figure
-        ax = fig.add_subplot(111)
-    else:
-        fig = ax.get_figure()
+#     if ax is None:
+#         # No current axes, create a new Figure
+#         if isinstance(figsize, (int, float)):
+#             fig = plt.figure(figsize = (figsize, figsize))
+#         elif isinstance(figsize, tuple):
+#             fig = plt.figure(figsize = figsize)
+#         else:
+#             raise TypeError('parameter figsize must either be float or (float, float), was: ' +
+#                 str(type(figsize)))
+#         # Add an axes spanning the entire Figure
+#         ax = fig.add_subplot(111)
+#     else:
+#         fig = ax.get_figure()
     
-    return fig, ax
+#     return fig, ax
 
-def _cm_as_list(cm):
-    if cm is None:
-        return __default_color_map
-    elif isinstance(cm, mpl.colors.ListedColormap):
-        return list(cm.colors)
-    elif isinstance(cm, list):
-        return cm
-    else:
-        return [cm]
+# def _cm_as_list(cm):
+#     if cm is None:
+#         return __default_color_map
+#     elif isinstance(cm, mpl.colors.ListedColormap):
+#         return list(cm.colors)
+#     elif isinstance(cm, list):
+#         return cm
+#     else:
+#         return [cm]
 
-def _get_default_labels(labels, unique_labels):
-    sorted_labels = sorted(unique_labels)
-    if labels is not None:
-        if not isinstance(labels, (np.ndarray, list)):
-            raise TypeError('parameter labels must be either a list or 1D numpy array')
-        if len(labels) < sorted_labels[-1]:
-            raise TypeError('parameter labels and number of classes does not match')
-        return np.array(labels).astype(str)
-    else:
-        # No labels, use the unique_labels found
-        labels = []
-        for lab in range(0, unique_labels[-1]+1):
-            labels.append('Label ' + str(lab))
-        return np.array(labels)
+# def _get_default_labels(labels, unique_labels):
+#     sorted_labels = sorted(unique_labels)
+#     if labels is not None:
+#         if not isinstance(labels, (np.ndarray, list)):
+#             raise TypeError('parameter labels must be either a list or 1D numpy array')
+#         if len(labels) < sorted_labels[-1]:
+#             raise TypeError('parameter labels and number of classes does not match')
+#         return np.array(labels).astype(str)
+#     else:
+#         # No labels, use the unique_labels found
+#         labels = []
+#         for lab in range(0, unique_labels[-1]+1):
+#             labels.append('Label ' + str(lab))
+#         return np.array(labels)
 
 
 ####################################
@@ -98,7 +99,7 @@ def plot_pvalues(y_true,
                     cols = [0,1],
                     labels = None,
                     ax = None,
-                    fig_size = (10,8),
+                    figsize = (10,8),
                     cm = None,
                     markers = None,
                     sizes = None,
@@ -132,7 +133,7 @@ def plot_pvalues(y_true,
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
 
-    fig_size : float or (float, float), optional
+    figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
     cm : color, list of colors or ListedColorMap, optional
@@ -191,7 +192,7 @@ def plot_pvalues(y_true,
     p_values = to_numpy2D(p_values, 'p_values')
     check_consistent_length(y_true,p_values)
 
-    n_class = p_values.shape[1]
+    n_pvals = p_values.shape[1]
 
     # Verify cols argument
     if cols is None or not isinstance(cols, list):
@@ -199,22 +200,23 @@ def plot_pvalues(y_true,
     if len(cols) != 2:
         raise ValueError('parameter cols must only have 2 values (can only plot 2D)')
     for col in cols:
-        if not isinstance(col, int) or col < 0 or col > n_class:
-            raise ValueError('parameter col must be a list of int, all in the range [0,'+
-                str(n_class) + ']')
+        if not isinstance(col, int) or col < 0 or col >= n_pvals:
+            raise ValueError('parameter col must be a list of int, all in the range [0,{}]'.format(n_pvals-1))
     
-    fig, ax = _get_fig_and_axis(ax, fig_size)
+    fig, ax = get_fig_and_axis(ax, figsize)
     fontargs = fontargs if fontargs is not None else {}
 
     # Validate the order-argument
     if order is not None and not isinstance(order, str):
-        raise TypeError('parameter order must be None or str type, was ' + str(type(order)))
+        raise TypeError('parameter order must be None or str, was {}'.format(type(order)))
 
     # Set the color-map (list)
-    colors = _cm_as_list(cm)
+    colors = cm_as_list(cm, __default_color_map)
 
     # Verify the labels
-    labels = _get_default_labels(labels, unique_labels)
+    n_class = get_n_classes(y_true,p_values)
+    labels = get_str_labels(labels, n_class)
+    # print("N_classes: {}, labels: {}, unique-labels: {}".format(n_class, labels, unique_labels))
     
     # Set the markers to a list
     if markers is None:
@@ -340,7 +342,7 @@ def plot_calibration_curve(y_true,
                             p_values,
                             labels = None,
                             ax = None,
-                            fig_size = (10,8),
+                            figsize = (10,8),
                             sign_min=0,
                             sign_max=1,
                             sign_step=0.01,
@@ -369,7 +371,7 @@ def plot_calibration_curve(y_true,
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
 
-    fig_size : float or (float, float), optional
+    figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
     title : str, optional
@@ -423,10 +425,12 @@ def plot_calibration_curve(y_true,
     
     # Verify and convert to correct format
     y_true = to_numpy1D_int(y_true, 'y_true')
-    unique_labels = np.sort(np.unique(y_true).astype(int))
+    # unique_labels = np.sort(np.unique(y_true).astype(int))
     p_values = to_numpy2D(p_values, 'p_values')
-    labels = _get_default_labels(labels, unique_labels)
     check_consistent_length(y_true,p_values)
+
+    n_class = get_n_classes(y_true,p_values)
+    labels = get_str_labels(labels, n_class)
 
     if chart_padding is None:
         chart_padding = (sign_vals[-1] - sign_vals[0])*0.025
@@ -442,22 +446,23 @@ def plot_calibration_curve(y_true,
             # sets all values in a row
             label_based_rates[ind] = label_based
     
-    error_fig, ax = _get_fig_and_axis(ax, fig_size)
+    error_fig, ax = get_fig_and_axis(ax, figsize)
     # Set chart range and add dashed diagonal
     ax.axis([sign_vals[0]-chart_padding, sign_vals[-1]+chart_padding, sign_vals[0]-chart_padding, sign_vals[-1]+chart_padding]) 
     ax.plot(sign_vals, sign_vals, '--k', alpha=0.25, linewidth=1)
     
     # Plot overall (high zorder to print it on top)
-    ax.plot(sign_vals, overall_error_rates, c=overall_color, label='Overall', zorder=10, **kwargs)
+    if overall_color is not None:
+        ax.plot(sign_vals, overall_error_rates, c=overall_color, label='Overall', zorder=10, **kwargs)
 
     if plot_all_labels:
-        colors = _cm_as_list(cm)
+        colors = cm_as_list(cm, __default_color_map)
         for i in range(label_based_rates.shape[1]):
             ax.plot(sign_vals, label_based_rates[:,i], color=colors[i], label=labels[i], **kwargs)
     
     ax.legend(loc='lower right')
     
-    ax.set_ylabel("Error rate")
+    ax.set_ylabel("Fraction errors")
     ax.set_xlabel("Significance")
     if title is not None:
         ax.set_title(title, {'fontsize': 'x-large'})
@@ -470,7 +475,7 @@ def plot_calibration_curve(y_true,
 def plot_label_distribution(y_true,
                             p_values,
                             ax=None,
-                            fig_size=(10,8),
+                            figsize=(10,8),
                             title=None,
                             sign_min=0,
                             sign_max=1,
@@ -494,7 +499,7 @@ def plot_label_distribution(y_true,
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
 
-    fig_size : float or (float, float), optional
+    figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
     title : str, optional
@@ -619,7 +624,7 @@ def plot_label_distribution(y_true,
         labels.append('Empty')
         colors.append(pal[2 % len(pal)])
     
-    fig, ax = _get_fig_and_axis(ax, fig_size)
+    fig, ax = get_fig_and_axis(ax, figsize)
 
     ax.axis([sign_vals[0],sign_vals[-1],0,1])
     ax.stackplot(sign_vals,ys,
@@ -646,7 +651,7 @@ def plot_label_distribution(y_true,
 
 def plot_confusion_matrix_bubbles(confusion_matrix,
                                   ax=None,
-                                  fig_size=(10,8),
+                                  figsize=(10,8),
                                   title=None,
                                   bubble_size_scale_factor = 1,
                                   color_scheme = 'prediction_size',
@@ -665,7 +670,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
 
-    fig_size : float or (float, float), optional
+    figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
     bubble_size_scale_factor : number, optional
@@ -700,7 +705,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
         raise TypeError('argument confusion_matrix must be a pandas DataFrame')
 
     # Create Figure and Axes if not given
-    fig, ax = _get_fig_and_axis(ax, fig_size)
+    fig, ax = get_fig_and_axis(ax, figsize)
     
     x_coords = []
     y_coords = []
@@ -773,7 +778,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
 
 def plot_confusion_matrix_heatmap(confusion_matrix, 
                                     ax=None, 
-                                    fig_size=(10,8), 
+                                    figsize=(10,8), 
                                     title=None,
                                     cmap=None,
                                     cbar_kws=None,
@@ -791,7 +796,7 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
 
-    fig_size : float or (float, float), optional
+    figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
     title : str, optional
@@ -819,10 +824,10 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
     metrics.calc_confusion_matrix : Calculating confusion matrix
     """
     
-    if not __using_seaborn:
+    if not using_seaborn:
         raise RuntimeError('Seaborn is required when using this function')
     
-    fig, ax = _get_fig_and_axis(ax, fig_size)
+    fig, ax = get_fig_and_axis(ax, figsize)
     
     if title is not None:
         ax.set_title(title, fontdict={'fontsize':'x-large'})

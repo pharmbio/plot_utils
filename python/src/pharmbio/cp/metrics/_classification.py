@@ -314,10 +314,13 @@ def confusion_matrix(y_true,
     else:
         result_matrix = np.zeros((n_class+3, n_class))
     
-    if labels is None:
-        labels = list(range(n_class))
-    elif len(labels) != n_class:
-        raise ValueError('parameter labels must have the same length as the number of classes')
+#    if labels is None:
+    labels = get_str_labels(labels, get_n_classes(y_true,p_values))
+#    if len(labels) != n_class:
+#        raise ValueError('parameter labels must have the same length as the number of classes')
+     #list(range(n_class))
+#    elif len(labels) != n_class:
+#        raise ValueError('parameter labels must have the same length as the number of classes')
     
     # For every observed class - t
     for t in range(n_class):
