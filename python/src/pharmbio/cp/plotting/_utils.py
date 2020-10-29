@@ -20,7 +20,19 @@ except ImportError as e:
 
 
 def get_fig_and_axis(ax=None, figsize = (10,8)):
-    '''Internal function for instantiating a Figure / axes object
+    '''Function for instantiating a Figure / axes object
+
+    Validates the input parameters, instantiates a Figure and axes if not
+    sent as a parameter to the plotting function.
+
+    Parameters
+    ----------
+    ax : matplotlib axes
+        An existing axes object or None
+    
+    figsize : float or (float, float)
+        A figure size to generate. If a single number is given, the figure will
+        be a square with each side of that size.
     
     Returns
     -------

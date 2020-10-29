@@ -6,24 +6,14 @@ import numpy as np
 from sklearn.utils import check_consistent_length
 import pandas as pd
 
-# Package stuff
-from ..utils import *
-from ._utils import * # Sets seaborn etc if available 
+from ..utils import get_sign_vals,get_n_classes,get_str_labels,to_numpy2D,to_numpy1D_int
+
+# The following import sets seaborn etc if available 
+from ._utils import get_fig_and_axis, cm_as_list
 
 from ..metrics import frac_error, frac_single_label_preds
 from ..metrics import frac_multi_label_preds
 
-
-# __using_seaborn = False
-# # Try to import sns as they create somewhat nicer plots
-# try:
-#     import seaborn as sns
-#     sns.set()
-#     logging.debug('Using Seaborn plotting defaults')
-#     __using_seaborn = True
-# except ImportError as e:
-#     logging.debug('Seaborn not available - using Matplotlib defaults')
-#     pass 
 
 # Set some defaults that will be used amongst the plotting functions
 __default_color_map = list(mpl.rcParams['axes.prop_cycle'].by_key()['color'])
@@ -33,61 +23,6 @@ __default_empty_prediction_color = "gainsboro"
 
 __default_incorr_single_label_color = __default_color_map.pop(2) 
 __default_incorr_multi_label_color = __default_color_map.pop(2)
-
-####################################
-### INTERNAL UTILS FUNCTIONS
-####################################
-
-# def _get_fig_and_axis(ax, figsize = (10,8)):
-#     '''Internal function for instantiating a Figure / axes object
-    
-#     Returns
-#     -------
-#     fig : Figure
-    
-#     ax : matplotlib axes
-#     '''
-    
-#     if ax is None:
-#         # No current axes, create a new Figure
-#         if isinstance(figsize, (int, float)):
-#             fig = plt.figure(figsize = (figsize, figsize))
-#         elif isinstance(figsize, tuple):
-#             fig = plt.figure(figsize = figsize)
-#         else:
-#             raise TypeError('parameter figsize must either be float or (float, float), was: ' +
-#                 str(type(figsize)))
-#         # Add an axes spanning the entire Figure
-#         ax = fig.add_subplot(111)
-#     else:
-#         fig = ax.get_figure()
-    
-#     return fig, ax
-
-# def _cm_as_list(cm):
-#     if cm is None:
-#         return __default_color_map
-#     elif isinstance(cm, mpl.colors.ListedColormap):
-#         return list(cm.colors)
-#     elif isinstance(cm, list):
-#         return cm
-#     else:
-#         return [cm]
-
-# def _get_default_labels(labels, unique_labels):
-#     sorted_labels = sorted(unique_labels)
-#     if labels is not None:
-#         if not isinstance(labels, (np.ndarray, list)):
-#             raise TypeError('parameter labels must be either a list or 1D numpy array')
-#         if len(labels) < sorted_labels[-1]:
-#             raise TypeError('parameter labels and number of classes does not match')
-#         return np.array(labels).astype(str)
-#     else:
-#         # No labels, use the unique_labels found
-#         labels = []
-#         for lab in range(0, unique_labels[-1]+1):
-#             labels.append('Label ' + str(lab))
-#         return np.array(labels)
 
 
 ####################################
@@ -214,7 +149,7 @@ def plot_pvalues(y_true,
     colors = cm_as_list(cm, __default_color_map)
 
     # Verify the labels
-    n_class = get_n_classes(y_true,p_values)
+    n_class = get_n_classes(y_true, p_values)
     labels = get_str_labels(labels, n_class)
     # print("N_classes: {}, labels: {}, unique-labels: {}".format(n_class, labels, unique_labels))
     
