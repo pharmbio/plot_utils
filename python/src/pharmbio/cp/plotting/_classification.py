@@ -397,7 +397,7 @@ def plot_calibration_curve(y_true,
     
     ax.legend(loc='lower right')
     
-    ax.set_ylabel("Fraction errors")
+    ax.set_ylabel("Error rate")
     ax.set_xlabel("Significance")
     if title is not None:
         ax.set_title(title, {'fontsize': 'x-large'})
