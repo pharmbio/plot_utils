@@ -45,15 +45,15 @@ prediction3D = icp.predict(data.data[test, :], significance=None)
 
 np.save('resources/boston_pred_out_3D_169.npy',prediction3D)
 np.save('resources/boston_labels.npy',data.target[test])
-print(prediction3D.shape)
-print(data.target[test])
-exit()
-prediction = icp.predict(data.data[test, :], significance=0.1)
-header = ['min','max','truth','size']
-size = prediction[:, 1] - prediction[:, 0]
-table = np.vstack([prediction.T, data.target[test], size.T]).T
-df = pd.DataFrame(table, columns=header)
-print(df)
+# print(prediction3D.shape)
+# print(data.target[test])
+# exit()
+# prediction = icp.predict(data.data[test, :], significance=0.1)
+# header = ['min','max','truth','size']
+# size = prediction[:, 1] - prediction[:, 0]
+# table = np.vstack([prediction.T, data.target[test], size.T]).T
+# df = pd.DataFrame(table, columns=header)
+# print(df)
 
 # -----------------------------------------------------------------------------
 # With normalization
@@ -71,7 +71,10 @@ icp.calibrate(data.data[calibrate, :], data.target[calibrate])
 # -----------------------------------------------------------------------------
 # Predict
 # -----------------------------------------------------------------------------
-prediction = icp.predict(data.data[test, :], significance=0.1)
+prediction = icp.predict(data.data[test, :], significance=None) #0.1)
+np.save('resources/boston_pred_out_3D_169_normalized.npy',prediction)
+
+exit()
 header = ['min','max','truth','size']
 size = prediction[:, 1] - prediction[:, 0]
 table = np.vstack([prediction.T, data.target[test], size.T]).T
