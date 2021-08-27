@@ -1,3 +1,4 @@
+from os import sendfile
 import numpy as np
 import pandas as pd
 
@@ -109,18 +110,45 @@ def to_numpy2D(input, param_name, min_num_cols=2):
         raise ValueError('parameter {} must be a matrix with at least {} columns'.format(param_name, min_num_cols))
     return matrix
 
-def to_numpy1D_int(input, param_name):
+def to_numpy1D(input,param_name):
     if isinstance(input, (list, pd.Series)):
-        arr = np.array(input)
+        return np.array(input)
     elif isinstance(input, np.ndarray):
         if len(input.shape) == 1:
-            arr = input
+            return input
         elif input.shape[1]>1:
             raise ValueError('parameter {} must be a list, 1D numpy array or pandas Series'.format(param_name))
         else:
             input.shape = (len(input), )
-            arr = input
+            return input
     else:
         raise ValueError('parameter {} must be a list, 1D numpy array or pandas Series'.format(param_name))
 
-    return arr.astype(np.int16)
+def to_numpy1D_int(input, param_name):
+    return to_numpy1D(input,param_name).astype(np.int16)
+
+def validate_regression_preds(input_matrix):
+    if not isinstance(input_matrix, np.ndarray):
+        raise ValueError('Regression predictions only supports numpy 2D or 3D arrays')
+    
+    if input_matrix.ndim == 2:
+        # 2D matrix should be (N,2) shape
+        if input_matrix.shape[1] != 2:
+            raise ValueError('Regression predictions should be of the shape (N,2) or (N,2,S), where N is the number of predictions and S is the number of significance levels')
+        return 1, input_matrix
+    elif input_matrix.ndim == 3:
+        # 3D matrix should be (N,2,S) shape
+        if (input_matrix.shape[1]!= 2):
+            raise ValueError('Regression predictions should be of the shape (N,2) or (N,2,S), where N is the number of predictions and S is the number of significance levels')
+        if input_matrix.shape[2]==1:
+            # "Fake 3D matrix"
+            return 1, input_matrix[:,:,0]
+        return input_matrix.shape[2], input_matrix
+    else:
+        raise ValueError('Regression predictions only supported as numpy 2D or 3D arrays')
+
+def to_numpy1D_reg_y_true(y_true,expected_len):
+    arr = to_numpy1D(y_true,'y_true')
+    if len(arr)!=expected_len:
+        raise ValueError('Input predictions and true labels not of the same length: {} != {}'.format(len(arr),expected_len))
+    return arr

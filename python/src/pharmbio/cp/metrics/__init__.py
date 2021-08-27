@@ -6,5 +6,5 @@ for conformal prediction output.
 # all 'public' classification metrics
 from ._classification import *
 
-# all 'public' regression metrics - TODO
-#from ._regression import *
+# all 'public' regression metrics 
+from ._regression import *
