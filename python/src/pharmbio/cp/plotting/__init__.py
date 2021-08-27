@@ -7,4 +7,4 @@ for conformal prediction output.
 from ._classification import *
 
 # all 'public' regression functions - TODO
-#from ._regression import *
+from ._regression import *
