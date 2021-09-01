@@ -1,7 +1,9 @@
 # Ignore the 'compiled' python code
 *.pyc 
 **.ipynb_checkpoints*
-python/.DS_Store
-python/src/.DS_Store
-python/src/pharmbio/.DS_Store
+#python/.DS_Store
+**.DS_Store
+#python/src/pharmbio/.DS_Store
 *.png
+**/test_output
+
