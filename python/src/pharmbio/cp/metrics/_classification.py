@@ -45,6 +45,10 @@ def frac_error(y_true, p_values, sign):
 
     label_wise_fraction_error : array, shape = (n_classes,)
         Fraction of errors for each true label, first index for class 0, ...
+    
+    See Also
+    --------
+    frac_errors : caculate error rates for a list of significance levels at the same time - much faster!
     """
     validate_sign(sign)
     p_values = to_numpy2D(p_values,'p_values')
@@ -70,6 +74,54 @@ def frac_error(y_true, p_values, sign):
         where=np.array(label_wise_counts)!=0)
     
     return float(total_errors) / y_true.shape[0], label_wise_errors
+
+def frac_errors(y_true,p_values,sign_vals):
+    """**Classification:** Calculate the fraction of errors for each significance level
+    Parameters
+    ----------
+    y_true : 1D numpy array, list or pandas Series
+        True labels
+
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+
+    sign : float in [0,1]
+        Significance the metric should be calculated for
+    
+    Returns
+    -------
+    (array, matrix)
+        array : numpy 1D array
+            Overall error rates, will have the same length as `sign_vals` 
+        matrix : numpy 2D array
+            Class-wise error-rates, will have the shape (num_sign_vals, n_classes)
+    
+    See Also
+    --------
+    frac_error : Using a single significance level
+    """
+    validate_sign(sign_vals)
+    pval2D = to_numpy2D(p_values,'p_values',return_copy=False)
+    predicted = _get_predicted(pval2D,sign_vals)
+    (y_onehot, categories) = to_numpy1D_onehot(y_true,'y_true') 
+    overall_err = __calc_frac_errors(predicted[y_onehot])
+
+    cls_err = np.zeros((predicted.shape[2],y_onehot.shape[1]),dtype=np.float)
+    for c in range(y_onehot.shape[1]):
+        cls_err[:,c] = __calc_frac_errors(predicted[y_onehot[:,c]][:,c,:]) 
+
+    return overall_err, cls_err
+
+def __calc_frac_errors(predictions):
+    return (1 - (predictions.sum(axis=0) / predictions.shape[0])).reshape(-1)
+
+def _get_predicted(p_vals,sign_vals):
+    preds = np.empty((p_vals.shape[0],p_vals.shape[1],len(sign_vals)),dtype=np.bool)
+    for i, s in enumerate(sign_vals):
+        preds[:,:,i] = p_vals > s
+    return preds
+
+
 
 
 def _unobs_frac_single_label_preds(p_values, sign):

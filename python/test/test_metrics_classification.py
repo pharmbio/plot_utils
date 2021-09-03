@@ -6,6 +6,7 @@ import sys
 sys.path.append('../src')
 from pharmbio.cp.metrics import *
 from statistics import mean 
+import time
 
 class TestConfusionMatrix(unittest.TestCase):
 
@@ -118,6 +119,49 @@ class TestObservedMetrics(unittest.TestCase):
         multiclass_data = np.genfromtxt('resources/multiclass.csv', delimiter=',')
         self.m_p_values = multiclass_data[:,1:]
         self.m_true_labels = multiclass_data[:,:1].astype(np.int)
+
+    def test_3D(self):
+        sign_vals = [0.7,0.8,0.9]
+        (overall,class_wise) = frac_errors(self.true_labels,self.p_values,sign_vals)
+        self.assertEqual(3,overall.shape[0]) # One for each sign-value
+        self.assertTrue(len(overall.shape)==1) # 1D array
+        self.assertEqual((len(sign_vals),self.p_values.shape[1]) , class_wise.shape)
+        # print(overall.shape)
+        # print(overall)
+        # print(class_wise.shape)
+        # print(class_wise)
+
+    def test_3D_vs_2D(self):
+        sign_vals = np.arange(0,1,0.01)
+        # Here check consistent results
+        (overall,cls_wise) = frac_errors(self.true_labels,self.p_values,sign_vals)
+        joined_overall = []
+        joined_cls_wise = np.zeros((len(sign_vals),self.p_values.shape[1]))
+        for i,s in enumerate(sign_vals):
+            err, cls_ = frac_error(self.true_labels, self.p_values, s)
+            joined_overall.append(err)
+            joined_cls_wise[i,:] = cls_
+        self.assertTrue(np.allclose(overall,np.array(joined_overall)))
+        self.assertTrue(np.allclose(joined_cls_wise, cls_wise))
+
+        # Small benchmark of the two versions, not even considering the 
+        num_iter = 0
+        tic = time.perf_counter()
+        for _ in range(num_iter):
+            for s in sign_vals:
+                _ = frac_error(self.true_labels, self.p_values, s)
+        toc = time.perf_counter()
+        if num_iter >10:
+            print(f"For loop in {toc - tic:0.4f} seconds")
+
+        tic = time.perf_counter()
+        for _ in range(num_iter):
+            _ = frac_errors(self.true_labels,self.p_values,sign_vals)
+        toc = time.perf_counter()
+        if num_iter >10:
+            print(f"All in one in {toc - tic:0.4f} seconds") 
+
+
 
     
     def test_fraction_errors(self):
@@ -272,3 +316,4 @@ class TestUnobMetrics(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

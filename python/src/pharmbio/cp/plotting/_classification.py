@@ -1,3 +1,5 @@
+"""CP Classification plots
+"""
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import logging
@@ -6,12 +8,13 @@ import numpy as np
 from sklearn.utils import check_consistent_length
 import pandas as pd
 
-from ..utils import get_sign_vals,get_n_classes,get_str_labels,to_numpy2D,to_numpy1D_int
+from ..utils import get_n_classes,get_str_labels,to_numpy2D,to_numpy1D_int, validate_sign
 
 # The following import sets seaborn etc if available 
-from ._utils import get_fig_and_axis, cm_as_list
+from ._utils import get_fig_and_axis, cm_as_list, _using_seaborn, _set_title, _set_label_if_not_set,_set_chart_size
+from ._common import add_calib_curve
 
-from ..metrics import frac_error, frac_single_label_preds
+from ..metrics import frac_errors, frac_single_label_preds
 from ..metrics import frac_multi_label_preds
 
 
@@ -260,12 +263,7 @@ def plot_pvalues(y_true,
         x_label = x_label.replace('{class}', str(labels[cols[0]]))
         ax.set_xlabel(x_label,**fontargs)
 
-    if title is not None:
-        if not bool(fontargs):
-            # No font-args given, use larger font for the title
-            ax.set_title(title, {'fontsize': 'x-large'})
-        else:
-            ax.set_title(title, **fontargs)
+    _set_title(ax,title)
     
     if tight_layout:
         fig.tight_layout()
@@ -278,19 +276,19 @@ def plot_calibration_curve(y_true,
                             labels = None,
                             ax = None,
                             figsize = (10,8),
-                            sign_min=0,
-                            sign_max=1,
-                            sign_step=0.01,
-                            sign_vals=None,
+                            sign_vals=np.arange(0,1,0.01),
                             cm = None,
                             overall_color = 'black',
-                            chart_padding=None,
+                            chart_padding=0.025,
+                            std_orientation=True,
                             plot_all_labels=True,
                             title=None,
                             tight_layout=True,
                             **kwargs):
     
-    """**Classification** - Create a calibration curve
+    """**Classification** - Create a calibration plot
+
+    By default, all class-wise calibration curves will be printed as well as the 'overall' error rate/accuracy for all examples
     
     Parameters
     ----------
@@ -309,20 +307,8 @@ def plot_calibration_curve(y_true,
     figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
-    title : str, optional
-        A title to add to the figure (default None)
-
-    sign_min : float range [0,1], optional
-        The smallest significance level to include (default 0)
-
-    sign_max : float range [0,1], optional
-        The largest significance level to include (default 1)
-
-    sign_step : float in range [1e-4, 0.5], optional
-        Spacing between evaulated significance levels (default 0.01)
-
-    sign_vals : list of float, optional
-        A list of significance values to use, the `significance_` values will be ignored if this parameter was passed (default None)
+    sign_vals : list of float, default np.arange(0,1,0.01)
+        A list of significance values to use, 
 
     cm : color, list of colors or ListedColorMap, optional
         The colors to use. First color will be for class 0, second for class 1, ..
@@ -332,6 +318,10 @@ def plot_calibration_curve(y_true,
 
     chart_padding : float, optional
         Padding added to the drawing area (default None will add 2.5% of padding)
+    
+    std_orientation : bool, optional
+        If the axes should have the standard 'error rate vs significance' (`True`) or
+        alternative 'Accuracy vs Confidence' (`False`) orientation.
 
     plot_all_labels : boolean, optional
         Plot the error rates for each class (default True). If False, only the 'overall' error rate is plotted
@@ -356,51 +346,49 @@ def plot_calibration_curve(y_true,
     """
     
     # Create a list with all significances 
-    sign_vals = get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
+    validate_sign(sign_vals)
+    if len(sign_vals) < 2:
+        raise ValueError('Must have at least 2 significance values to plot a calibration curve')
     
     # Verify and convert to correct format
     y_true = to_numpy1D_int(y_true, 'y_true')
-    # unique_labels = np.sort(np.unique(y_true).astype(int))
     p_values = to_numpy2D(p_values, 'p_values')
     check_consistent_length(y_true,p_values)
 
     n_class = get_n_classes(y_true,p_values)
     labels = get_str_labels(labels, n_class)
 
-    if chart_padding is None:
-        chart_padding = (sign_vals[-1] - sign_vals[0])*0.025
+    # Calculate error rates
+    overall_frac, cls_frac = frac_errors(y_true,p_values,sign_vals)
     
-    overall_error_rates = []
-    if plot_all_labels:
-        label_based_rates = np.zeros((len(sign_vals), p_values.shape[1]))
-    
-    for ind, s in enumerate(sign_vals):
-        overall, label_based = frac_error(y_true,p_values,s)
-        overall_error_rates.append(overall)
-        if plot_all_labels:
-            # sets all values in a row
-            label_based_rates[ind] = label_based
-    
+    # Create the figure and axis to plot in
     error_fig, ax = get_fig_and_axis(ax, figsize)
-    # Set chart range and add dashed diagonal
-    ax.axis([sign_vals[0]-chart_padding, sign_vals[-1]+chart_padding, sign_vals[0]-chart_padding, sign_vals[-1]+chart_padding]) 
-    ax.plot(sign_vals, sign_vals, '--k', alpha=0.25, linewidth=1)
     
-    # Plot overall (high zorder to print it on top)
-    if overall_color is not None:
-        ax.plot(sign_vals, overall_error_rates, c=overall_color, label='Overall', zorder=10, **kwargs)
+    (x_lab,y_lab) = add_calib_curve(ax,overall_frac,sign_vals,
+        legend='Overall',zorder=100,
+        color=overall_color,
+        std_orientation=std_orientation,
+        set_chart_size=True,
+        chart_padding=chart_padding,
+        plot_expected=True,
+        **kwargs)
 
     if plot_all_labels:
         colors = cm_as_list(cm, __default_color_map)
-        for i in range(label_based_rates.shape[1]):
-            ax.plot(sign_vals, label_based_rates[:,i], color=colors[i], label=labels[i], **kwargs)
+        for i in range(cls_frac.shape[1]):
+            add_calib_curve(ax,cls_frac[:,i],sign_vals,
+                legend=labels[i],
+                color=colors[i],
+                set_chart_size=False,
+                plot_expected=False,
+                std_orientation=std_orientation,
+                **kwargs)
     
     ax.legend(loc='lower right')
     
-    ax.set_ylabel("Error rate")
-    ax.set_xlabel("Significance")
-    if title is not None:
-        ax.set_title(title, {'fontsize': 'x-large'})
+    _set_label_if_not_set(ax,x_lab, True)
+    _set_label_if_not_set(ax,y_lab, False)
+    _set_title(ax,title)
     
     if tight_layout:
         error_fig.tight_layout()
@@ -412,10 +400,9 @@ def plot_label_distribution(y_true,
                             ax=None,
                             figsize=(10,8),
                             title=None,
-                            sign_min=0,
-                            sign_max=1,
-                            sign_step=0.01,
-                            sign_vals=None,
+                            x_label = 'Significance',
+                            y_label = 'Label distribution',
+                            sign_vals=np.arange(0,1,0.01),
                             cm=None,
                             display_incorrects=False,
                             mark_best=True,
@@ -439,17 +426,11 @@ def plot_label_distribution(y_true,
 
     title : str, optional
         A title to add to the figure (default None)
+    
+    x_label,y_label : str, optional
+        Labels for the x and y axes. Defaults are given
 
-    sign_min : float range [0,1], optional
-        The smallest significance level to include (default 0)
-
-    sign_max : float range [0,1], optional
-        The largest significance level to include (default 1)
-
-    sign_step : float in range [1e-4, 0.5], optional
-        Spacing between evaulated significance levels (default 0.01)
-
-    sign_vals : list of float, optional
+    sign_vals : list of float, default np.arange(0,1,0.01)
         Significance values to use, the `significance_` parameters will be ignored if this 
         parameter was passed (default None)
 
@@ -481,8 +462,8 @@ def plot_label_distribution(y_true,
     else:
         pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color, __default_incorr_single_label_color,__default_incorr_multi_label_color]
 
-    # Create a list with all significances
-    sign_vals = get_sign_vals(sign_vals, sign_min,sign_max,sign_step)
+    # Validate the significance values
+    validate_sign(sign_vals)
 
     # Validate format
     p_values = to_numpy2D(p_values,'p_values')
@@ -573,10 +554,9 @@ def plot_label_distribution(y_true,
     
     ax.legend()
     
-    ax.set_ylabel("Label distribution")
-    ax.set_xlabel("Significance")
-    if title is not None:
-        ax.set_title(title, {'fontsize': 'x-large'})
+    _set_title(ax,title)
+    _set_label_if_not_set(ax,x_label,x_axis=True)
+    _set_label_if_not_set(ax,y_label,x_axis=False)
     
     if tight_layout:
         fig.tight_layout()
@@ -701,8 +681,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     ax.set_xlabel("Observed")
     ax.set_ylabel("Predicted")
     ax.invert_yaxis()
-    if title is not None:
-        ax.set_title(title, {'fontsize': 'x-large'})
+    _set_title(ax,title)
 
     # Write the number for each bubble
     if annotate is not None and annotate: 
@@ -769,13 +748,13 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
         for the `cbar_kws` and other possible customizations. 
     """
     
-    if not using_seaborn:
+    if not _using_seaborn:
         raise RuntimeError('Seaborn is required when using this function')
+    import seaborn as sns
     
     fig, ax = get_fig_and_axis(ax, figsize)
     
-    if title is not None:
-        ax.set_title(title, fontdict={'fontsize':'x-large'})
+    _set_title(ax,title)
     ax = sns.heatmap(confusion_matrix, ax=ax, annot=True, cmap=cmap, cbar_kws=cbar_kws, **kwargs)
     ax.set(xlabel='Predicted', ylabel='Observed')
 

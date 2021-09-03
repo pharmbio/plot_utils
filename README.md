@@ -35,6 +35,10 @@ To use this package you clone this repo and add the `<base-path>/python/src/` di
 ## Developer notes
 We aim at supplying proper docstrings, following the [numpy docstring guide](https://numpydoc.readthedocs.io/en/latest/format.html).
 
+### Testing
+All python-tests are located in the [test folder](python/test), they can either be run individually using
+`python <test_script>` or runned as a suite using the `./run_tests.sh`. Note that the plotting tests generate images that are saved in [test_output](python/test/test_output) directory and these should be checked manually (no good way of automating plotting-tests).
+
 ### TODOs:
 
 Add/finish the following plots:

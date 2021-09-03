@@ -8,13 +8,13 @@ from sklearn.utils import check_consistent_length
 import pandas as pd
 
 
-using_seaborn = False
+_using_seaborn = False
 # Try to import sns as they create somewhat nicer plots
 try:
     import seaborn as sns
     sns.set()
     logging.debug('Using Seaborn plotting defaults')
-    using_seaborn = True
+    _using_seaborn = True
 except ImportError as e:
     logging.debug('Seaborn not available - using Matplotlib defaults')
     pass 
@@ -28,8 +28,9 @@ def get_fig_and_axis(ax=None, figsize = (10,8)):
 
     Parameters
     ----------
-    ax : matplotlib axes
-        An existing axes object or None
+    ax : matplotlib axes or None
+        An existing axes object that the user may send,
+        to write the plot in
     
     figsize : float or (float, float)
         A figure size to generate. If a single number is given, the figure will
@@ -39,7 +40,12 @@ def get_fig_and_axis(ax=None, figsize = (10,8)):
     -------
     fig : Figure
     
-    ax : matplotlib axes
+    ax : matplotlib Axes
+
+    Raises
+    ------
+    TypeError
+        If `figsize` is of invalid type
     '''
     
     if ax is None:
@@ -49,7 +55,7 @@ def get_fig_and_axis(ax=None, figsize = (10,8)):
         elif isinstance(figsize, tuple):
             fig = plt.figure(figsize = figsize)
         else:
-            raise TypeError('parameter figsize must either be float or (float, float), was: {}'.fromat(type(figsize)))
+            raise TypeError('parameter figsize must either be float or (float, float), was: {}'.format(type(figsize)))
         # Add an axes spanning the entire Figure
         ax = fig.add_subplot(111)
     else:
@@ -67,32 +73,89 @@ def cm_as_list(cm, default_cm):
     else:
         return [cm]
 
+def _set_label_if_not_set(ax, text, x_axis=True):
+    """Sets the x or y axis labels if not set before
 
-def set_chart_size(ax, x_vals, y_vals, padding = 0.025):
+    Checks if the axis label has been set previously, 
+    does not overwrite any existing label
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+        The Axes to write to, must not be None
+    text : str or None
+        Optional text to write to the label, function simply
+        returns if None is given
+    x_axis : bool
+        If it the x axis (True) or y axis (False) that should be written
+    """
+    if text is None or not isinstance(text,str):
+        return
+    if x_axis:
+        if len(ax.xaxis.get_label().get_text()) == 0:
+            # Label not set before
+            ax.set_xlabel(text)
+    else:
+        if len(ax.yaxis.get_label().get_text()) == 0:
+            ax.set_ylabel(text)
+
+def _set_title(ax, title=None):
+    """Sets the title if given and not previously set
+
+    """
+    if title is None:
+        return
+    if len(ax.get_title()) == 0:
+        if not isinstance(title,str):
+            title = str(title)
+        ax.set_title(title,fontdict={'fontsize':'x-large'})
+
+def _set_chart_size(ax, x_vals, y_vals, padding = 0.025):
+    """Sets the chart drawing limits
+
+    Handles padding and finds the max and min values
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    x_vals, y_vals : array_like
+        The values to find limits of, can optionally be calculated prior to this function and sent as a list of e.g. [min,max] to save computation time
+    padding : float or (float,float), default = 0.025
+        Padding as percentage of the value range, if a single value is given the same padding is applied to both axes. For two values, the first is applied to x-axes and the second to the y-axes.
+    """
     x_min = np.min(x_vals)
     x_max = np.max(x_vals)
     y_min = np.min(y_vals)
     y_max = np.max(y_vals)
     
-    if isinstance(padding,float):
+    if padding is None:
+        x_padd = 0
+        y_padd = 0
+    elif isinstance(padding,float):
         x_padd = (x_max - x_min)*padding
         y_padd = (y_max - y_min)*padding
     elif isinstance(padding,tuple) or isinstance(padding,list):
         if len(padding) == 1:
             x_padd = (x_max - x_min)*padding[0]
             y_padd = (y_max - y_min)*padding[0]
-        elif len(padding) == 2:
+        elif len(padding) > 1:
             x_padd = (x_max - x_min)*padding[0]
             y_padd = (y_max - y_min)*padding[1]
+        else:
+            raise TypeError('padding should be a float or list/tuple of 2 floats')
     else:
-        warn('Padding only allowed as None, float or (x_padd,y_padd), falling back to default 2.5%')
+        raise TypeError('padding should be a float or list/tuple of 2 floats, got {}'.format(type(padding)))
+    
     # If no correct given, set default 2.5%
-    if x_padd is None:
-        x_padd = (x_max - x_min)*0.025
-        y_padd = (y_max - y_min)*0.025
+    # if x_padd is None:
+    #     x_padd = (x_max - x_min)*0.025
+    #     y_padd = (y_max - y_min)*0.025
 
     # [x_min,x_max,y_min,y_max]
-    ax.axis([x_min - x_padd, x_max + x_padd, y_min-y_padd, y_max+y_padd])
+    ax.axis([x_min - x_padd, 
+        x_max + x_padd, 
+        y_min-y_padd, 
+        y_max+y_padd])
 
 def _plot_vline(x,y_min,y_max,ax,color='gray',alpha=0.7,line_cap=None):
     # The vertical line itself
@@ -106,7 +169,7 @@ def _plot_vline(x,y_min,y_max,ax,color='gray',alpha=0.7,line_cap=None):
     elif (isinstance(line_cap,bool) and line_cap) or line_cap == 1:
         m_u = m_l = '_'
     elif line_cap == 2:
-        m_u,m_l = 6,7 #'^', 'v'
+        m_u,m_l = 6,7 
     elif isinstance(line_cap,str):
         m_u, m_l = line_cap,line_cap
     else:

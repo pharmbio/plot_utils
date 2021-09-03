@@ -1,14 +1,18 @@
 """CP Regression plots
 """
+# from os import stat_result
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.lib.arraysetops import isin
+# from numpy.lib.arraysetops import isin
 from sklearn.utils import check_consistent_length
-from warnings import warn
+# from warnings import warn
+
+from pharmbio.cp.utils import to_numpy1D, to_numpy2D
 
 # The following import sets seaborn etc if available 
-from ._utils import get_fig_and_axis, set_chart_size, _plot_vline
+from ._utils import get_fig_and_axis, _set_chart_size, _plot_vline,_set_label_if_not_set, _set_title
+from ._common import add_calib_curve
 
 
 def plot_calibration_curve_reg(error_rates,
@@ -16,35 +20,27 @@ def plot_calibration_curve_reg(error_rates,
     color = 'blue',
     ax = None,
     figsize = (10,8),
-    chart_padding = None,
+    chart_padding = 0.025,
     title = None,
     tight_layout = True,
+    x_significance = True,
+    y_error = True,
     **kwargs):
-
+    """**Regression** 
+    """
     check_consistent_length((sign_vals,error_rates))
     error_fig, ax = get_fig_and_axis(ax, figsize)
+    ax.set_aspect('equal','box')
 
-    # TODO Check sorting ?
+    (x_lab, y_lab) = add_calib_curve(ax,error_rates,sign_vals,
+        plot_expected=True,
+        chart_padding=chart_padding,
+        set_chart_size=True)
     
-    if chart_padding is None:
-        chart_padding = (sign_vals[-1] - sign_vals[0]) * 0.025
-    
-    # Set chart range
-    set_chart_size(ax,
-        sign_vals,
-        sign_vals,
-        chart_padding)
-    ax.plot(sign_vals, sign_vals, '--k', alpha=0.25, linewidth=1)
-
-    ax.plot(sign_vals, error_rates, color=color, **kwargs)
-
     # Print some labels and title if appropriate
-    if len(ax.yaxis.get_label().get_text()) == 0:
-        ax.set_ylabel("Error rate")
-    if len(ax.xaxis.get_label().get_text()) == 0:
-        ax.set_xlabel("Significance")
-    if title is not None:
-        ax.set_title(title, {'fontsize': 'x-large'})
+    _set_label_if_not_set(ax,x_lab,True)
+    _set_label_if_not_set(ax,y_lab,False)
+    _set_title(ax,title)
 
     if tight_layout:
         error_fig.tight_layout()
@@ -62,31 +58,41 @@ def plot_pred_widths(pred_widths,
     title = None,
     y_label = 'Median Prediction interval width',
     tight_layout = True,
+    x_significance = True,
     **kwargs):
     
     check_consistent_length((sign_vals, pred_widths))
-    error_fig, ax = get_fig_and_axis(ax, figsize)
+    fig, ax = get_fig_and_axis(ax, figsize)
+
+    if x_significance:
+        xs = sign_vals
+        x_label = 'Significance'
+    else:
+        xs = 1 - sign_vals
+        x_label = 'Confidence'
 
     # Set chart range
-    set_chart_size(ax,
-        sign_vals,
+    _set_chart_size(ax,
+        xs,
         pred_widths,
         chart_padding)
 
-    ax.plot(sign_vals, pred_widths, color=color, **kwargs)
+    ax.plot(xs, pred_widths, color=color, **kwargs)
 
     # Print some labels and title if appropriate
-    if (len(ax.yaxis.get_label().get_text()) == 0) and (y_label is not None):
-        ax.set_ylabel(y_label)
-    if len(ax.xaxis.get_label().get_text()) == 0:
-        ax.set_xlabel("Significance")
+    _set_label_if_not_set(ax,x_label,True)
+    _set_label_if_not_set(ax,y_label,False)
+    # if (len(ax.yaxis.get_label().get_text()) == 0) and (y_label is not None):
+    #     ax.set_ylabel(y_label)
+    # if len(ax.xaxis.get_label().get_text()) == 0:
+    #     ax.set_xlabel("Significance")
     if title is not None:
         ax.set_title(title, {'fontsize': 'x-large'})
 
     if tight_layout:
-        error_fig.tight_layout()
+        fig.tight_layout()
     
-    return error_fig
+    return fig
 
 
 
@@ -100,65 +106,63 @@ def plot_pred_intervals(y_true,
     correct_alpha = 0.75,
     correct_ci = 'gray',
     correct_ci_alpha = 0.7,
+    correct_label = 'Correct',
 
     incorrect_color = 'red',
     incorrect_marker = 'o',
     incorrect_alpha = 0.75,
     incorrect_ci ='gray',
     incorrect_ci_alpha = 0.7,
+    incorrect_label = 'Incorrect',
 
     line_cap = 1,
     chart_padding = 0.025,
     title = None,
-    x_label = "Predicted examples",
+    x_label = 'Predicted examples',
     y_label = None,
     
+    x_start_index = 0,
     tight_layout = True,
     **kwargs):
     """**Regression**
     """
 
     check_consistent_length((y_true, predictions))
-    ys = y_true.copy()
-    ys.shape = (ys.shape[0],1)
+    ys = to_numpy1D(y_true, "y_true",return_copy=True)
+    preds = to_numpy2D(predictions,"predictions")
 
     fig, ax = get_fig_and_axis(ax, figsize)
     
-    joined = np.hstack((ys,predictions))
     # sorted by the true labels
-    joined = joined[joined[:,0].argsort()]
-    xs = np.arange(0,len(joined),1).reshape((len(joined),1))
-    joined = np.hstack((joined,xs))
+    sort_order = ys.argsort()
+    ys = ys[sort_order]
+    preds = preds[sort_order]
+    xs = np.arange(x_start_index,x_start_index+len(ys),1)
 
     # find the correct and incorrect predictions
-    corr_ind = (joined[:,1]<= joined[:,0]) & (joined[:,0]<= joined[:,2])
+    corr_ind = (preds[:,0] <= ys) & (ys<= preds[:,1])
     incorr_ind = ~corr_ind
-    # Columns in the gathered result matrix
-    y_ind = 0
-    ci_min = 1
-    ci_max = 2
-    x_ind = 3
     
     # Set the chart size
-    set_chart_size(ax,
+    _set_chart_size(ax,
         [0,len(y_true)],
         [np.max(predictions), np.max(y_true), np.min(predictions), np.min(y_true)],
         chart_padding)
 
     # VERTICAL INTERVALS
     # plot corrects
-    _plot_vline(x = joined[corr_ind,x_ind],
-        y_min = joined[corr_ind,ci_min],
-        y_max = joined[corr_ind,ci_max],
+    _plot_vline(x = xs[corr_ind],
+        y_min = preds[corr_ind,0],
+        y_max = preds[corr_ind,1],
         ax = ax,
         color = correct_ci,
         alpha = correct_ci_alpha,
         line_cap=line_cap)
     
     # plot incorrect intervals
-    _plot_vline(x = joined[incorr_ind,x_ind],
-        y_min = joined[incorr_ind,ci_min],
-        y_max = joined[incorr_ind,ci_max],
+    _plot_vline(x = xs[incorr_ind],
+        y_min = preds[incorr_ind,0],
+        y_max = preds[incorr_ind,1],
         ax = ax,
         color = incorrect_ci,
         alpha = incorrect_ci_alpha,
@@ -166,27 +170,30 @@ def plot_pred_intervals(y_true,
 
     # plot the true values
     # corrects
-    ax.plot(joined[corr_ind,x_ind],
-        joined[corr_ind,y_ind], 
-        label = 'Correct',
+    ax.plot(xs[corr_ind],
+        ys[corr_ind], 
+        label = correct_label,
         marker = correct_marker,
         alpha = correct_alpha,
         lw = 0,
         color = correct_color)
     # incorrects
-    ax.plot(joined[incorr_ind,x_ind],
-        joined[incorr_ind,y_ind],
-        label = 'Incorrect',
+    ax.plot(xs[incorr_ind],
+        ys[incorr_ind],
+        label = incorrect_label,
         marker = incorrect_marker,
         alpha = incorrect_alpha,
         lw = 0,
         color = incorrect_color)
 
     # Print some labels and title if appropriate
-    if (len(ax.yaxis.get_label().get_text()) == 0) and (y_label is not None):
-        ax.set_ylabel(y_label)
-    if (len(ax.xaxis.get_label().get_text()) == 0) and x_label is not None:
-        ax.set_xlabel(x_label)
+    _set_label_if_not_set(ax, y_label, x_axis=False)
+    _set_label_if_not_set(ax, x_label, x_axis=True)
+
+    # if (len(ax.yaxis.get_label().get_text()) == 0) and (y_label is not None):
+    #     ax.set_ylabel(y_label)
+    # if (len(ax.xaxis.get_label().get_text()) == 0) and x_label is not None:
+    #     ax.set_xlabel(x_label)
     if title is not None:
         ax.set_title(title, {'fontsize': 'x-large'})
 
