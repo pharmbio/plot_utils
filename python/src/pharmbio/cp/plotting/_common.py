@@ -15,7 +15,35 @@ def add_calib_curve(ax,
     """Utility function for adding a single line to an Axes
 
     Solves setting chart size, error rate vs significance or Accuracy vs confidence
+    Parameters
+    ----------
+    ax : matplotlib Axes
+        Axes to plot in
+    
+    error_rates : 1d ndarray
 
+    sign_vals : 1d ndarray
+
+    legend : str or None
+        An optional legend to add to the plotted values
+    
+    color : str or matplotlib recognized color-input
+    
+    std_orientation : bool, default True
+        If plotting 'error-rate vs significance' (True) or 'Accuracy vs confidence' (False)
+    
+    chart_padding : float, (float,float) or None
+        padding added to the chart-area outside of the min and max values found in data. If two values the first value will be used as x-padding and second y-padding. E.g. 0.025 means 2.5% on both sides
+
+    set_chart_size : bool, default False
+        If the chart size should be set
+    
+    plot_expected : bool, default True
+        If the dashed 'expected' error/accuracy line should be plotted
+    
+    zorder : float or None
+        An zorder (controlling the order of plotted artists), a higher zorder means plotting on-top of other objects plotted
+    
     Returns
     -------
     (x_label, y_label) : the str labels for what is plotted
@@ -41,7 +69,7 @@ def add_calib_curve(ax,
             chart_padding)
     
     if plot_expected:
-        ax.plot(xs, xs, '--', color='gray', linewidth=1) # alpha=0.25,
+        ax.plot(xs, xs, '--', color='gray', linewidth=1)
     
     # If there's an explicit zorder - add it to a new dict
     if zorder is not None:

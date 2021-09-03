@@ -19,6 +19,11 @@ class Test_calib_plot(unittest.TestCase):
         error_rates = metrics.frac_error_reg(boston_labels,boston_preds)
         fig = plotting.plot_calibration_curve_reg(error_rates,significance_lvls)
         _save_reg(fig,"Test_calib_plot.test_boston")
+    
+    def test_boston_non_std_orient(self):
+        error_rates = metrics.frac_error_reg(boston_labels,boston_preds)
+        fig = plotting.plot_calibration_curve_reg(error_rates,significance_lvls,std_orientation=False)
+        _save_reg(fig,"Test_calib_plot.test_boston_non_std_orient")
 
 
 class Test_pred_width(unittest.TestCase):

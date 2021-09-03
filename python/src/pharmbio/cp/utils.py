@@ -161,6 +161,9 @@ def to_numpy1D_onehot(input, param_name, return_encoder=False, dtype=bool):
             The one-hot-encoded version of y_true
         array : numpy 1D
             The categories, corresponding to the indicies of `matrix`
+    
+    (matrix, array, sklearn.preprocessing.OneHotEncoder)
+        When `return_encoder` is set to True.
     """
 
     one_dim = to_numpy1D(input,param_name,return_copy=False).reshape(-1,1)

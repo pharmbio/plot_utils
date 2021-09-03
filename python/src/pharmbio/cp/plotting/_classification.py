@@ -2,8 +2,6 @@
 """
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import logging
-import math
 import numpy as np
 from sklearn.utils import check_consistent_length
 import pandas as pd
@@ -33,22 +31,23 @@ __default_incorr_multi_label_color = __default_color_map.pop(2)
 ####################################
 
 def plot_pvalues(y_true,
-                    p_values,
-                    cols = [0,1],
-                    labels = None,
-                    ax = None,
-                    figsize = (10,8),
-                    cm = None,
-                    markers = None,
-                    sizes = None,
-                    title = None,
-                    order = "freq",
-                    x_label = 'p-value {class}',
-                    y_label = 'p-value {class}',
-                    add_legend = True,
-                    tight_layout = True,
-                    fontargs = None,
-                    **kwargs):
+    p_values,
+    cols = [0,1],
+    labels = None,
+    ax = None,
+    figsize = (10,8),
+    chart_padding = 0.025,
+    cm = None,
+    markers = None,
+    sizes = None,
+    order = "freq",
+    title = None,
+    x_label = 'p-value {class}',
+    y_label = 'p-value {class}',
+    add_legend = True,
+    tight_layout = True,
+    fontargs = None,
+    **kwargs):
     """Plot p-values agains each other
 
     Plot p-values against each other, switch the axes by setting the `cols` parameter
@@ -85,9 +84,6 @@ def plot_pvalues(y_true,
     sizes : float or list of float, optional
         Size(s) to use for all predictions or for predictions for each class
 
-    title : str, optional
-        A title to add to the figure (default None)
-
     order : {'freq', 'class', 'label', None}
         Order in which the points are plotted, options:
         'freq' : plot each half of the plot independently, choosing the order by
@@ -95,13 +91,12 @@ def plot_pvalues(y_true,
             This will make it less likely that outliers are hidden by points plotted later
         'class' / 'label' / None : Plot based on order of classes, i.e. plot class 0, 1, 2,..
 
-    x_label : str, optional
-        label for the x-axis, default is 'p-value {class x}' where x is based on the `cols` parameter
-        If None is given, no y-label is added to the figure
+    title : str, optional
+        A title to add to the figure (default None)
 
-    y_label : str, optional
-        label for the y-axis, default is 'p-value {class y}' where y is based on the `cols` parameter.
-        If None is given, no y-label is added to the figure
+    x_label, y_label : str, optional
+        label for the x/y-axis, default is 'p-value {class x/y}' where x/y is based on the `cols` parameter
+        If None is given, no x/y-label is added to the figure
 
     add_legend : bool, optional
         If a legend should be added to the figure (Default True)
@@ -142,6 +137,7 @@ def plot_pvalues(y_true,
             raise ValueError('parameter col must be a list of int, all in the range [0,{}]'.format(n_pvals-1))
     
     fig, ax = get_fig_and_axis(ax, figsize)
+    _set_chart_size(ax,[0,1], [0,1], chart_padding)
     fontargs = fontargs if fontargs is not None else {}
 
     # Validate the order-argument
@@ -154,7 +150,6 @@ def plot_pvalues(y_true,
     # Verify the labels
     n_class = get_n_classes(y_true, p_values)
     labels = get_str_labels(labels, n_class)
-    # print("N_classes: {}, labels: {}, unique-labels: {}".format(n_class, labels, unique_labels))
     
     # Set the markers to a list
     if markers is None:
@@ -249,12 +244,8 @@ def plot_pvalues(y_true,
             ax.legend(hs, [labels[x] for x in ls], loc='upper right', **fontargs)
     else:
         raise ValueError('parameter order not any of the allowed values: ' + str(order))
-
-    ax.set_ylim([-.025, 1.025])
-    ax.set_xlim([-.025, 1.025])
     
     # Set some labels and title
-
     if y_label is not None:
         y_label = y_label.replace('{class}', str(labels[cols[1]]))
         ax.set_ylabel(y_label,**fontargs)
@@ -272,19 +263,19 @@ def plot_pvalues(y_true,
 
 
 def plot_calibration_curve(y_true,
-                            p_values,
-                            labels = None,
-                            ax = None,
-                            figsize = (10,8),
-                            sign_vals=np.arange(0,1,0.01),
-                            cm = None,
-                            overall_color = 'black',
-                            chart_padding=0.025,
-                            std_orientation=True,
-                            plot_all_labels=True,
-                            title=None,
-                            tight_layout=True,
-                            **kwargs):
+    p_values,
+    labels = None,
+    ax = None,
+    figsize = (10,8),
+    chart_padding=0.025,
+    sign_vals=np.arange(0,1,0.01),
+    cm = None,
+    overall_color = 'black',
+    std_orientation=True,
+    plot_all_labels=True,
+    title=None,
+    tight_layout=True,
+    **kwargs):
     
     """**Classification** - Create a calibration plot
 
@@ -307,6 +298,9 @@ def plot_calibration_curve(y_true,
     figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
+    chart_padding : float, (float,float) or None, default 0.025
+        padding added to the chart-area outside of the min and max values found in data. If two values the first value will be used as x-padding and second y-padding. E.g. 0.025 means 2.5% on both sides
+
     sign_vals : list of float, default np.arange(0,1,0.01)
         A list of significance values to use, 
 
@@ -315,13 +309,10 @@ def plot_calibration_curve(y_true,
 
     overall_color : color, optional
         The color to use for the overall error rate (Default 'black')
-
-    chart_padding : float, optional
-        Padding added to the drawing area (default None will add 2.5% of padding)
     
     std_orientation : bool, optional
         If the axes should have the standard 'error rate vs significance' (`True`) or
-        alternative 'Accuracy vs Confidence' (`False`) orientation.
+        alternative 'Accuracy vs Confidence' (`False`) orientation
 
     plot_all_labels : boolean, optional
         Plot the error rates for each class (default True). If False, only the 'overall' error rate is plotted
@@ -396,18 +387,18 @@ def plot_calibration_curve(y_true,
     return error_fig
 
 def plot_label_distribution(y_true,
-                            p_values,
-                            ax=None,
-                            figsize=(10,8),
-                            title=None,
-                            x_label = 'Significance',
-                            y_label = 'Label distribution',
-                            sign_vals=np.arange(0,1,0.01),
-                            cm=None,
-                            display_incorrects=False,
-                            mark_best=True,
-                            tight_layout=True,
-                            **kwargs):
+    p_values,
+    ax=None,
+    figsize=(10,8),
+    title=None,
+    x_label = 'Significance',
+    y_label = 'Label distribution',
+    sign_vals=np.arange(0,1,0.01),
+    cm=None,
+    display_incorrects=False,
+    mark_best=True,
+    tight_layout=True,
+    **kwargs):
     """**Classification** - Create a stacked plot with label ratios
     
     Parameters
@@ -565,14 +556,14 @@ def plot_label_distribution(y_true,
 
 
 def plot_confusion_matrix_bubbles(confusion_matrix,
-                                  ax=None,
-                                  figsize=(10,8),
-                                  title=None,
-                                  scale_factor = 1,
-                                  annotate = True,
-                                  color_scheme = 'prediction_size',
-                                  tight_layout = True,
-                                  **kwargs):
+    ax=None,
+    figsize=(10,8),
+    title=None,
+    scale_factor = 1,
+    annotate = True,
+    color_scheme = 'prediction_size',
+    tight_layout = True,
+    **kwargs):
     """**Classification** - Create a Confusion matrix bubble plot 
 
     Render a confusion matrix with bubbles, the size of the bubbles are related to the frequency
@@ -698,13 +689,13 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
 
 
 def plot_confusion_matrix_heatmap(confusion_matrix, 
-                                    ax=None, 
-                                    figsize=(10,8), 
-                                    title=None,
-                                    cmap=None,
-                                    cbar_kws=None,
-                                    tight_layout=True,
-                                    **kwargs):
+    ax=None, 
+    figsize=(10,8), 
+    title=None,
+    cmap=None,
+    cbar_kws=None,
+    tight_layout=True,
+    **kwargs):
     """**Classification** - Plots the Conformal Confusion Matrix in a Heatmap
     
     Note that this method requires the Seaborn to be available and will fail otherwise

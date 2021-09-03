@@ -20,7 +20,7 @@ def pred_width(predictions, median = True):
 
     Returns
     -------
-    float or 1D numpy array
+    widths : float or 1D numpy array
         A scalar value if the `predictions` input is 2D, or a 1D array if the `predictions` is 3D (one median/mean value for each significance level)
     """
     n_sign, pred_matrix = validate_regression_preds(predictions) 
@@ -39,13 +39,27 @@ def pred_width(predictions, median = True):
     
 def frac_error_reg(y_true, predictions):
     """**Regression** - Calculate the fraction of errors
+
+    Parameters
+    ----------
+    y_true : 1d array like
+        List or array with the true labels, must be convertable to numpy ndarray
+    
+    predictions : 2D or 3D ndarray
+        A matrix with either shape (n_samples, 2, n_sign_levels) or (n_sampes,2). The shape of the preidctions will decide the output dimension of the error_rates
+    
+    Returns
+    -------
+    error_rates : float or 1D ndarray
+        The either a single float in case input is 2D, or an array of error rates (one for each significance level)
+
     """
     # Validation and potential 
     n_sign, pred_matrix = validate_regression_preds(predictions)
     ys = to_numpy1D_reg_y_true(y_true, pred_matrix.shape[0])
 
     if n_sign > 1:
-        # 3D matrix TODO
+        # 3D matrix
         ys.shape = (ys.shape[0],1) # turn to matrix in order to broadcast
         truth_vals = (np.greater_equal(ys,pred_matrix[:,0])) & (np.greater_equal(pred_matrix[:,1],ys))
     else:
