@@ -351,16 +351,26 @@ def plot_calibration_curve(y_true,
 
     # Calculate error rates
     overall_frac, cls_frac = frac_errors(y_true,p_values,sign_vals)
+    # min_y, max_y = np.min(cls_frac), np.max(cls_frac)
     
     # Create the figure and axis to plot in
     error_fig, ax = get_fig_and_axis(ax, figsize)
+
+    x_vals = [np.min(sign_vals), np.max(sign_vals)]
+    y_vals = [np.min(overall_frac), np.max(overall_frac)]+ x_vals
+    if plot_all_labels:
+        y_vals.append(np.min(cls_frac))
+        y_vals.append(np.max(cls_frac))
+    _set_chart_size(ax,x_vals,y_vals,
+        padding=chart_padding,
+        std_orientation=std_orientation)
     
     (x_lab,y_lab) = add_calib_curve(ax,overall_frac,sign_vals,
         legend='Overall',zorder=100,
         color=overall_color,
         std_orientation=std_orientation,
-        set_chart_size=True,
-        chart_padding=chart_padding,
+        set_chart_size=False,
+        # chart_padding=chart_padding,
         plot_expected=True,
         **kwargs)
 

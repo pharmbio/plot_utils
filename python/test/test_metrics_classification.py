@@ -120,16 +120,47 @@ class TestObservedMetrics(unittest.TestCase):
         self.m_p_values = multiclass_data[:,1:]
         self.m_true_labels = multiclass_data[:,:1].astype(np.int)
 
-    def test_3D(self):
+    def test_3D_frac_err(self):
         sign_vals = [0.7,0.8,0.9]
         (overall,class_wise) = frac_errors(self.true_labels,self.p_values,sign_vals)
         self.assertEqual(3,overall.shape[0]) # One for each sign-value
         self.assertTrue(len(overall.shape)==1) # 1D array
         self.assertEqual((len(sign_vals),self.p_values.shape[1]) , class_wise.shape)
+
+        # Test using a single significance level
+        (overall,class_wise) = frac_errors(self.true_labels,self.p_values,sign_vals=0.25)
+        self.assertEqual(1,len(overall))
+        self.assertEqual((1,self.p_values.shape[1]), class_wise.shape)
+        # print(class_wise)
         # print(overall.shape)
         # print(overall)
         # print(class_wise.shape)
         # print(class_wise)
+    
+    def test_3D_frac_err_multiclass(self):
+        sign_vals = [0.7,0.8,0.9]
+        (overall,class_wise) = frac_errors(self.m_true_labels,self.m_p_values,sign_vals)
+        self.assertEqual(3,overall.shape[0]) # One for each sign-value
+        self.assertTrue(len(overall.shape)==1) # 1D array
+        self.assertEqual((len(sign_vals),self.m_p_values.shape[1]) , class_wise.shape)
+    
+    def test_3D_frac_err_multiclass_only_one_cls(self):
+        sign_vals = [0.7,0.8,0.9]
+
+        only_1_index = self.m_true_labels == 1
+        # print(only_1_index.shape)
+        ys = self.m_true_labels[only_1_index]
+        # print(ys.shape)
+        pvals = self.m_p_values[only_1_index.reshape(-1),:]
+        # print(pvals.shape)
+
+        (overall,class_wise) = frac_errors(ys,pvals,sign_vals)
+        # The 0 and 2 classes should have error-rate of 0 for all significance levels!
+        self.assertTrue(np.all(np.zeros(3)==class_wise[:,0]))
+        self.assertTrue(np.all(np.zeros(3)==class_wise[:,2]))
+        self.assertEqual(3,overall.shape[0]) # One for each sign-value
+        self.assertTrue(len(overall.shape)==1) # 1D array
+        self.assertEqual((len(sign_vals),self.m_p_values.shape[1]) , class_wise.shape)
 
     def test_3D_vs_2D(self):
         sign_vals = np.arange(0,1,0.01)

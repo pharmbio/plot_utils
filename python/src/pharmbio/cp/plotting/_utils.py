@@ -110,7 +110,7 @@ def _set_title(ax, title=None):
             title = str(title)
         ax.set_title(title,fontdict={'fontsize':'x-large'})
 
-def _set_chart_size(ax, x_vals, y_vals, padding = 0.025):
+def _set_chart_size(ax, x_vals, y_vals, padding = 0.025, std_orientation=True):
     """Sets the chart drawing limits
 
     Handles padding and finds the max and min values
@@ -122,11 +122,19 @@ def _set_chart_size(ax, x_vals, y_vals, padding = 0.025):
         The values to find limits of, can optionally be calculated prior to this function and sent as a list of e.g. [min,max] to save computation time
     padding : float or (float,float), default = 0.025
         Padding as percentage of the value range, if a single value is given the same padding is applied to both axes. For two values, the first is applied to x-axes and the second to the y-axes.
+    std_orientation : bool, default True
+        If using the x/y values or using 1-x's and 1-y's for both axes
     """
-    x_min = np.min(x_vals)
-    x_max = np.max(x_vals)
-    y_min = np.min(y_vals)
-    y_max = np.max(y_vals)
+    if std_orientation:
+        x_min = np.min(x_vals)
+        x_max = np.max(x_vals)
+        y_min = np.min(y_vals)
+        y_max = np.max(y_vals)
+    else:
+        x_min = 1 - np.min(x_vals)
+        x_max = 1 - np.max(x_vals)
+        y_min = 1 - np.min(y_vals)
+        y_max = 1 - np.max(y_vals)
     
     if padding is None:
         x_padd = 0

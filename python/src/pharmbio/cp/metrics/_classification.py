@@ -49,6 +49,9 @@ def frac_error(y_true, p_values, sign):
     See Also
     --------
     frac_errors : caculate error rates for a list of significance levels at the same time - much faster!
+
+    .. deprecated::
+        Use `frac_errors` instead as it uses vector functions and is roughly 30 times faster to compute
     """
     validate_sign(sign)
     p_values = to_numpy2D(p_values,'p_values')
@@ -96,18 +99,19 @@ def frac_errors(y_true,p_values,sign_vals):
         matrix : numpy 2D array
             Class-wise error-rates, will have the shape (num_sign_vals, n_classes)
     
-    See Also
-    --------
-    frac_error : Using a single significance level
     """
     validate_sign(sign_vals)
+    if isinstance(sign_vals,float):
+        sign_vals = [sign_vals]
     pval2D = to_numpy2D(p_values,'p_values',return_copy=False)
     predicted = _get_predicted(pval2D,sign_vals)
-    (y_onehot, categories) = to_numpy1D_onehot(y_true,'y_true') 
+    (y_onehot, categories) = to_numpy1D_onehot(y_true,'y_true',labels=np.arange(pval2D.shape[1]))
     overall_err = __calc_frac_errors(predicted[y_onehot])
 
     cls_err = np.zeros((predicted.shape[2],y_onehot.shape[1]),dtype=np.float)
     for c in range(y_onehot.shape[1]):
+        if y_onehot[:,c].sum() < 1:
+            continue
         cls_err[:,c] = __calc_frac_errors(predicted[y_onehot[:,c]][:,c,:]) 
 
     return overall_err, cls_err

@@ -152,7 +152,7 @@ def to_numpy1D(input,param_name,return_copy=True):
 def to_numpy1D_int(input, param_name):
     return to_numpy1D(input,param_name).astype(np.int16)
 
-def to_numpy1D_onehot(input, param_name, return_encoder=False, dtype=bool):
+def to_numpy1D_onehot(input, param_name, return_encoder=False, dtype=bool, labels=None):
     """
     Returns
     -------
@@ -165,9 +165,10 @@ def to_numpy1D_onehot(input, param_name, return_encoder=False, dtype=bool):
     (matrix, array, sklearn.preprocessing.OneHotEncoder)
         When `return_encoder` is set to True.
     """
-
     one_dim = to_numpy1D(input,param_name,return_copy=False).reshape(-1,1)
-    enc = OneHotEncoder(sparse=False,dtype=dtype,categories=[np.unique(one_dim)])
+    if labels is None:
+        labels = np.unique(one_dim)
+    enc = OneHotEncoder(sparse=False,dtype=dtype,categories=[labels])
     one_hot = enc.fit_transform(one_dim)
 
     if return_encoder:
