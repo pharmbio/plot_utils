@@ -58,7 +58,9 @@ def plot_calibration_curve_reg(error_rates,
     error_fig, ax = get_fig_and_axis(ax, figsize)
     ax.set_aspect('equal','box')
 
-    (x_lab, y_lab) = add_calib_curve(ax,error_rates,sign_vals,
+    (x_lab, y_lab) = add_calib_curve(ax,
+        error_rates,
+        sign_vals,
         color=color,
         plot_expected=True,
         chart_padding=chart_padding,
@@ -152,9 +154,10 @@ def plot_pred_widths(pred_widths,
     _set_chart_size(ax,
         xs,
         pred_widths,
-        chart_padding)
+        chart_padding,
+        std_orientation=std_orientation)
 
-    ax.plot(xs, pred_widths, color=color, **kwargs)
+    ax.plot(xs, pred_widths, color=color,label=y_label, **kwargs)
 
     # Print some labels and title if appropriate
     _set_label_if_not_set(ax,x_label,True)
@@ -275,7 +278,7 @@ def plot_pred_intervals(y_true,
     
     # Set the chart size
     _set_chart_size(ax,
-        [0,len(y_true)],
+        [x_start_index,len(y_true)+x_start_index],
         [np.max(predictions), np.max(y_true), np.min(predictions), np.min(y_true)],
         chart_padding)
 
@@ -300,20 +303,18 @@ def plot_pred_intervals(y_true,
 
     # plot the true values
     # corrects
-    ax.plot(xs[corr_ind],
+    ax.scatter(xs[corr_ind],
         ys[corr_ind], 
         label = correct_label,
         marker = correct_marker,
         alpha = correct_alpha,
-        lw = 0,
         color = correct_color)
     # incorrects
-    ax.plot(xs[incorr_ind],
+    ax.scatter(xs[incorr_ind],
         ys[incorr_ind],
         label = incorrect_label,
         marker = incorrect_marker,
         alpha = incorrect_alpha,
-        lw = 0,
         color = incorrect_color)
 
     # Print some labels and title if appropriate

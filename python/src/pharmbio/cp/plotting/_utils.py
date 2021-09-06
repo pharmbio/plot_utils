@@ -154,14 +154,8 @@ def _set_chart_size(ax, x_vals, y_vals, padding = 0.025, std_orientation=True):
     else:
         raise TypeError('padding should be a float or list/tuple of 2 floats, got {}'.format(type(padding)))
     
-    # If no correct given, set default 2.5%
-    # if x_padd is None:
-    #     x_padd = (x_max - x_min)*0.025
-    #     y_padd = (y_max - y_min)*0.025
-
-    # [x_min,x_max,y_min,y_max]
-    ax.axis([x_min - x_padd, 
-        x_max + x_padd, 
+    ax.axis([x_min-x_padd, 
+        x_max+x_padd, 
         y_min-y_padd, 
         y_max+y_padd])
 

@@ -33,6 +33,12 @@ class Test_pred_width(unittest.TestCase):
         fig = plotting.plot_pred_widths(pred_widths,significance_lvls)
         _save_reg(fig,"Test_pred_width.test_boston")
     
+    def test_boston_subset(self):
+        pred_widths = metrics.pred_width(boston_preds)
+        fig = plotting.plot_pred_widths(pred_widths[10:],significance_lvls[10:])
+        ax = fig.axes[0]
+        _save_reg(fig,"Test_pred_width.test_boston_subset")
+    
 
 class Test_pred_intervals(unittest.TestCase):
 
