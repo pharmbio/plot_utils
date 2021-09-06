@@ -2,7 +2,7 @@
 Plotting library for conformal prediction metrics, intended to facilitate fast testing in e.g. notebooks.  
 
 ## Examples
-Example usage can be found in the [User Guide notebook](python/User_guide_plotting.ipynb).
+Example usage can be found in the [User Guide Classification notebook](python/User_guide_plotting.ipynb) and [User Guide Regression notebook](python/User_guide_regression.ipynb).
 
 ## Dependencies
 - [matplotlib](https://matplotlib.org/)
@@ -18,6 +18,10 @@ The code internally use numpy ndarrays for matrices and vectors, but tries to be
 ### Rendering backends
 Internally this library requires [matplotlib](https://matplotlib.org/) and (optionally) [Seaborn](https://seaborn.pydata.org/). Only the `plot_confusion_matrix_heatmap` has a hard requirement for seaborn to be available, otherwise this library only interacts with the matplotlib classes and use the seaborn-settings for generating somewhat nicer plots (in our opinion). Styling and colors can always be changed through the matplotlib API. 
 
+### Data loading - regression
+To simplify loading and conversions of data the plot_utils library now has some utility functions for loading CSV files into the apropriate format for regression predictions. These follow the format used in [nonconformist](https://github.com/donlnz/nonconformist), using 2D or 3D tensors in numpy ndarrays of shape `(num_examples,2)` or `(num_examples,2,num_significance_levels)`, where the second dimension contains the lower and upper limits of the prediction intervals.
+
+
 ## Supported plots
 ### Classification
 * Calibration plot
@@ -27,13 +31,15 @@ Internally this library requires [matplotlib](https://matplotlib.org/) and (opti
 * Heatmap confusion matrix
 
 ### Regression 
-**TODO**
+* Calibration plot
+* Efficiency plot (mean or median prediction interval width vs significance)
+* Prediction intervals (for a given significance level)
 
 ## Set up 
 To use this package you clone this repo and add the `<base-path>/python/src/` directory to your `$PYTHONPATH`. 
 
 ## Developer notes
-We aim at supplying proper docstrings, following the [numpy docstring guide](https://numpydoc.readthedocs.io/en/latest/format.html).
+We should aim at supplying proper docstrings, following the [numpy docstring guide](https://numpydoc.readthedocs.io/en/latest/format.html).
 
 ### Testing
 All python-tests are located in the [test folder](python/test), they can either be run individually using
@@ -47,10 +53,6 @@ Add/finish the following plots:
  - [x] bubbel-plot - Jonathan
  - [x] heatmap - Staffan
  - [x] p0-p1 plot - Staffan
- - [ ] Add regression metrics
- - [ ] Add plots regression
+ - [x] Add regression metrics
+ - [x] Add plots regression
 
-_Regression_
-
-Have to decide over the API here, the [Nonconformist package](https://github.com/donlnz/nonconformist) seems to return 
-(n_examples, 2) numpy ndarrays (lower and upper bounds for predictions). If several significance levels are used, add a third dimension making up the predictions made for each significance. Are we OK with this convention?
