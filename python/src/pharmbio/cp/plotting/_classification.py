@@ -271,7 +271,8 @@ def plot_calibration_curve(y_true,
     sign_vals=np.arange(0,1,0.01),
     cm = None,
     overall_color = 'black',
-    std_orientation=True,
+    flip_x = False,
+    flip_y = False,
     plot_all_labels=True,
     title=None,
     tight_layout=True,
@@ -310,9 +311,11 @@ def plot_calibration_curve(y_true,
     overall_color : color, optional
         The color to use for the overall error rate (Default 'black')
     
-    std_orientation : bool, optional
-        If the axes should have the standard 'error rate vs significance' (`True`) or
-        alternative 'Accuracy vs Confidence' (`False`) orientation
+    flip_x : bool, default False
+        If the x-axes should display significance level (`False`) or confidence (`True`)
+    
+    flip_y : bool, default False
+        If the y-axes should display error-rate (`False`) or accuracy (`True`)
 
     plot_all_labels : boolean, optional
         Plot the error rates for each class (default True). If False, only the 'overall' error rate is plotted
@@ -340,6 +343,8 @@ def plot_calibration_curve(y_true,
     validate_sign(sign_vals)
     if len(sign_vals) < 2:
         raise ValueError('Must have at least 2 significance values to plot a calibration curve')
+    if not isinstance(sign_vals,np.ndarray):
+        sign_vals = np.array(sign_vals)
     
     # Verify and convert to correct format
     y_true = to_numpy1D_int(y_true, 'y_true')
@@ -351,41 +356,60 @@ def plot_calibration_curve(y_true,
 
     # Calculate error rates
     overall_frac, cls_frac = frac_errors(y_true,p_values,sign_vals)
-    # min_y, max_y = np.min(cls_frac), np.max(cls_frac)
     
     # Create the figure and axis to plot in
     error_fig, ax = get_fig_and_axis(ax, figsize)
 
-    x_vals = [np.min(sign_vals), np.max(sign_vals)]
-    y_vals = [np.min(overall_frac), np.max(overall_frac)]+ x_vals
+    # Find the x and y ranges and set the chart-size
+    y_vals = np.concatenate((overall_frac,sign_vals))
+    # x_vals = np.array([np.min(sign_vals), np.max(sign_vals)])
+    # y_vals = np.array([np.min(overall_frac),(overall_frac)])
+    # y_vals = np.append(y_vals,x_vals)
+    # else:
+    #     x_vals = [np.min(sign_vals), np.max(sign_vals)]
+    # if flip_y:
+    #     y_vals = [1-np.min(overall_frac), np.max(overall_frac)]+ x_vals
+    # print(y_vals.shape)
     if plot_all_labels:
-        y_vals.append(np.min(cls_frac))
-        y_vals.append(np.max(cls_frac))
-    _set_chart_size(ax,x_vals,y_vals,
+        y_vals = np.concatenate((y_vals,cls_frac.reshape(-1)))
+    # print(x_vals)
+    # print(y_vals)
+        # y_vals.append(np.max(cls_frac))
+    _set_chart_size(ax,sign_vals,y_vals,
         padding=chart_padding,
-        std_orientation=std_orientation)
+        flip_x=flip_x,
+        flip_y=flip_y)
     
-    (x_lab,y_lab) = add_calib_curve(ax,overall_frac,sign_vals,
-        legend='Overall',zorder=100,
+    (x_lab,y_lab) = add_calib_curve(ax,
+        sign_vals,
+        overall_frac,
+        legend='Overall',
+        zorder=100,
         color=overall_color,
-        std_orientation=std_orientation,
+        flip_x=flip_x,
+        flip_y=flip_y,
         set_chart_size=False,
-        # chart_padding=chart_padding,
         plot_expected=True,
         **kwargs)
 
     if plot_all_labels:
         colors = cm_as_list(cm, __default_color_map)
         for i in range(cls_frac.shape[1]):
-            add_calib_curve(ax,cls_frac[:,i],sign_vals,
+            add_calib_curve(ax,
+                sign_vals,
+                cls_frac[:,i],
                 legend=labels[i],
                 color=colors[i],
                 set_chart_size=False,
                 plot_expected=False,
-                std_orientation=std_orientation,
+                flip_x=flip_x,
+                flip_y=flip_y,
                 **kwargs)
     
-    ax.legend(loc='lower right')
+    if flip_x != flip_y:
+        ax.legend(loc='lower left')
+    else:
+        ax.legend(loc='lower right')
     
     _set_label_if_not_set(ax,x_lab, True)
     _set_label_if_not_set(ax,y_lab, False)

@@ -20,10 +20,20 @@ class Test_calib_plot(unittest.TestCase):
         fig = plotting.plot_calibration_curve_reg(error_rates,significance_lvls)
         _save_reg(fig,"Test_calib_plot.test_boston")
     
-    def test_boston_non_std_orient(self):
+    def test_boston_flipping(self):
         error_rates = metrics.frac_error_reg(boston_labels,boston_preds)
-        fig = plotting.plot_calibration_curve_reg(error_rates,significance_lvls,std_orientation=False)
-        _save_reg(fig,"Test_calib_plot.test_boston_non_std_orient")
+        # Plot all in one image
+        fig, axes = plt.subplots(2,2,figsize=(10,10))
+        # std
+        plotting.plot_calibration_curve_reg(error_rates,significance_lvls, ax=axes[0,0], title='std')
+        # flip x
+        plotting.plot_calibration_curve_reg(error_rates,significance_lvls, ax=axes[0,1], flip_x=True, title='flip x')
+        # flip y
+        plotting.plot_calibration_curve_reg(error_rates,significance_lvls, ax=axes[1,0], flip_y=True, title='flip y')
+        # flip both
+        plotting.plot_calibration_curve_reg(error_rates,significance_lvls, ax=axes[1,1], flip_x=True, flip_y=True, title='both')
+
+        _save_reg(fig,"Test_calib_plot.test_boston_flippin")
 
 
 class Test_pred_width(unittest.TestCase):
@@ -38,6 +48,16 @@ class Test_pred_width(unittest.TestCase):
         fig = plotting.plot_pred_widths(pred_widths[10:],significance_lvls[10:])
         ax = fig.axes[0]
         _save_reg(fig,"Test_pred_width.test_boston_subset")
+    
+    def test_boston_non_std(self):
+        pred_widths = metrics.pred_width(boston_preds)
+        fig, axes = plt.subplots(1,2,figsize=(10,10))
+        # No flip
+        plotting.plot_pred_widths(pred_widths,significance_lvls,ax=axes[0],title="standard")
+        # Flip
+        plotting.plot_pred_widths(pred_widths,significance_lvls,ax=axes[1],flip_x=True,title="flip_x")
+        # Save
+        _save_reg(fig,"Test_pred_width.test_boston_flippin'")
     
 
 class Test_pred_intervals(unittest.TestCase):

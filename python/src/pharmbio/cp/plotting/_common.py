@@ -1,12 +1,14 @@
 import numpy as np
+from numpy.core.fromnumeric import sort
 from ._utils import _set_chart_size
 
 def add_calib_curve(ax, 
-    error_rates,
     sign_vals,
+    error_rates,
     legend = None,
     color = 'k',
-    std_orientation = True,
+    flip_x = False,
+    flip_y = False,
     chart_padding = 0.025,
     set_chart_size = False,
     plot_expected = True,
@@ -20,17 +22,20 @@ def add_calib_curve(ax,
     ax : matplotlib Axes
         Axes to plot in
     
-    error_rates : 1d ndarray
-
     sign_vals : 1d ndarray
+
+    error_rates : 1d ndarray
 
     legend : str or None
         An optional legend to add to the plotted values
     
     color : str or matplotlib recognized color-input
     
-    std_orientation : bool, default True
-        If plotting 'error-rate vs significance' (True) or 'Accuracy vs confidence' (False)
+    flip_x : bool, default False
+        If the x-axes should display significance level (`False`) or confidence (`True`)
+    
+    flip_y : bool, default False
+        If the y-axes should display error-rate (`False`) or accuracy (`True`)
     
     chart_padding : float, (float,float) or None
         padding added to the chart-area outside of the min and max values found in data. If two values the first value will be used as x-padding and second y-padding. E.g. 0.025 means 2.5% on both sides
@@ -48,17 +53,17 @@ def add_calib_curve(ax,
     -------
     (x_label, y_label) : the str labels for what is plotted
     """
-    
-    if std_orientation:
-        x_label='Significance'
-        y_label='Error rate'
-        xs = sign_vals
-        ys = error_rates
+
+    # Handle x-axis
+    if flip_x:
+        x_label, xs = 'Confidence', 1 - np.array(sign_vals)
     else:
-        x_label='Confidence'
-        y_label='Accuracy'
-        xs = 1 - sign_vals
-        ys = 1 - error_rates
+        x_label, xs = 'Significance', sign_vals
+    # Handle y-axis
+    if flip_y:
+        y_label, ys = 'Accuracy', 1 - np.array(error_rates)
+    else:
+        y_label, ys = 'Error rate', error_rates
     
     if set_chart_size:
         min = np.min([np.min(ys), np.min(xs)])
@@ -69,7 +74,11 @@ def add_calib_curve(ax,
             chart_padding)
     
     if plot_expected:
-        ax.plot(xs, xs, '--', color='gray', linewidth=1)
+        if flip_x == flip_y:
+            # If both flipped or both normal
+            ax.plot(xs, xs, '--', color='gray', linewidth=1)
+        else:
+            ax.plot(xs, 1-np.array(xs), '--', color='gray', linewidth=1)
     
     # If there's an explicit zorder - add it to a new dict
     if zorder is not None:

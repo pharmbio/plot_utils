@@ -110,7 +110,12 @@ def _set_title(ax, title=None):
             title = str(title)
         ax.set_title(title,fontdict={'fontsize':'x-large'})
 
-def _set_chart_size(ax, x_vals, y_vals, padding = 0.025, std_orientation=True):
+def _set_chart_size(ax, 
+    x_vals, 
+    y_vals, 
+    padding = 0.025, 
+    flip_x=False, 
+    flip_y=False):
     """Sets the chart drawing limits
 
     Handles padding and finds the max and min values
@@ -118,37 +123,40 @@ def _set_chart_size(ax, x_vals, y_vals, padding = 0.025, std_orientation=True):
     Parameters
     ----------
     ax : matplotlib Axes
+    
     x_vals, y_vals : array_like
         The values to find limits of, can optionally be calculated prior to this function and sent as a list of e.g. [min,max] to save computation time
+    
     padding : float or (float,float), default = 0.025
         Padding as percentage of the value range, if a single value is given the same padding is applied to both axes. For two values, the first is applied to x-axes and the second to the y-axes.
-    std_orientation : bool, default True
-        If using the x/y values or using 1-x's and 1-y's for both axes
-    """
-    if std_orientation:
-        x_min = np.min(x_vals)
-        x_max = np.max(x_vals)
-        y_min = np.min(y_vals)
-        y_max = np.max(y_vals)
-    else:
-        x_min = 1 - np.min(x_vals)
-        x_max = 1 - np.max(x_vals)
-        y_min = 1 - np.min(y_vals)
-        y_max = 1 - np.max(y_vals)
     
+    flip_x : bool, default False
+        If the x-axes should display significance level (`False`) or confidence (`True`)
+    
+    flip_y : bool, default False
+        If the y-axes should display error-rate (`False`) or accuracy (`True`)
+    """
+    x_min,x_max = np.min(x_vals), np.max(x_vals)
+    y_min,y_max = np.min(y_vals), np.max(y_vals)
+    if flip_x:
+        x_min,x_max = 1-x_max, 1-x_min
+    if flip_y:
+        y_min,y_max = 1-y_max, 1-y_min
+    x_w, y_w = x_max - x_min, y_max - y_min
+
     if padding is None:
         x_padd = 0
         y_padd = 0
     elif isinstance(padding,float):
-        x_padd = (x_max - x_min)*padding
-        y_padd = (y_max - y_min)*padding
+        x_padd = x_w*padding
+        y_padd = y_w*padding
     elif isinstance(padding,tuple) or isinstance(padding,list):
         if len(padding) == 1:
-            x_padd = (x_max - x_min)*padding[0]
-            y_padd = (y_max - y_min)*padding[0]
+            x_padd = x_w*padding[0]
+            y_padd = y_w*padding[0]
         elif len(padding) > 1:
-            x_padd = (x_max - x_min)*padding[0]
-            y_padd = (y_max - y_min)*padding[1]
+            x_padd = x_w*padding[0]
+            y_padd = y_w*padding[1]
         else:
             raise TypeError('padding should be a float or list/tuple of 2 floats')
     else:

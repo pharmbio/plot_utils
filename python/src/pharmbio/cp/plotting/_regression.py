@@ -1,10 +1,8 @@
 """CP Regression plots
 """
-# from os import stat_result
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-# from numpy.lib.arraysetops import isin
 from sklearn.utils import check_consistent_length
 # from warnings import warn
 
@@ -21,7 +19,8 @@ def plot_calibration_curve_reg(error_rates,
     ax = None,
     figsize = (10,8),
     chart_padding = 0.025,
-    std_orientation = True,
+    flip_x = False,
+    flip_y = False,
     title = None,
     tight_layout = True,
     **kwargs):
@@ -43,6 +42,21 @@ def plot_calibration_curve_reg(error_rates,
 
     figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
+    
+    flip_x : bool, default False
+        If the x-axes should display significance level (`False`) or confidence (`True`)
+    
+    flip_y : bool, default False
+        If the y-axes should display error-rate (`False`) or accuracy (`True`)
+    
+    title : str, optional
+        Optional title that will be printed in 'x-large' font size (default None)
+
+    tight_layout : bool, optional
+        Set `tight_layout` on the matplotlib Figure object
+
+    **kwargs : dict, optional
+        Keyword arguments, passed to matplotlib
 
     Returns
     -------
@@ -59,13 +73,14 @@ def plot_calibration_curve_reg(error_rates,
     ax.set_aspect('equal','box')
 
     (x_lab, y_lab) = add_calib_curve(ax,
-        error_rates,
         sign_vals,
+        error_rates,
         color=color,
         plot_expected=True,
         chart_padding=chart_padding,
         set_chart_size=True,
-        std_orientation=std_orientation,
+        flip_x=flip_x,
+        flip_y=flip_y,
         **kwargs)
     
     # Print some labels and title if appropriate
@@ -83,7 +98,7 @@ def plot_calibration_curve_reg(error_rates,
 def plot_pred_widths(pred_widths,
     sign_vals,
     color = 'blue',
-    std_orientation = True,
+    flip_x = False,
     ax = None,
     figsize = (10,8),
     chart_padding = 0.025,
@@ -104,8 +119,8 @@ def plot_pred_widths(pred_widths,
     color : str or matplotlib recognized color-input
         Color of the plotted curve
     
-    std_orientation : bool, optional
-        If the x-axes should display significance values (True) or confidence (False)
+    flip_x : bool, default False
+        If the x-axes should display significance level (`False`) or confidence (`True`)
 
     ax : matplotlib Axes
         Axes to plot in
@@ -143,19 +158,18 @@ def plot_pred_widths(pred_widths,
     validate_sign(sign_vals)
     fig, ax = get_fig_and_axis(ax, figsize)
 
-    if std_orientation:
+    if flip_x:
+        xs = 1 - sign_vals if isinstance(sign_vals,np.ndarray) else 1 - np.array(sign_vals)
+        x_label = 'Confidence' 
+    else:
         xs = sign_vals
         x_label = 'Significance'
-    else:
-        xs = 1 - sign_vals if isinstance(sign_vals,np.ndarray) else np.array(sign_vals)
-        x_label = 'Confidence'
 
     # Set chart range
     _set_chart_size(ax,
         xs,
         pred_widths,
-        chart_padding,
-        std_orientation=std_orientation)
+        chart_padding)
 
     ax.plot(xs, pred_widths, color=color,label=y_label, **kwargs)
 

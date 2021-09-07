@@ -105,7 +105,7 @@ def frac_errors(y_true,p_values,sign_vals):
         sign_vals = [sign_vals]
     pval2D = to_numpy2D(p_values,'p_values',return_copy=False)
     predicted = _get_predicted(pval2D,sign_vals)
-    (y_onehot, categories) = to_numpy1D_onehot(y_true,'y_true',labels=np.arange(pval2D.shape[1]))
+    (y_onehot, _) = to_numpy1D_onehot(y_true,'y_true',labels=np.arange(pval2D.shape[1]))
     overall_err = __calc_frac_errors(predicted[y_onehot])
 
     cls_err = np.zeros((predicted.shape[2],y_onehot.shape[1]),dtype=np.float)

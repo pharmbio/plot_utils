@@ -75,9 +75,17 @@ class TestCalibrationPlot(unittest.TestCase):
         _save_clf(fig,"TestCalibPlot.test_3_class")
     
     def test_3_class_conf_acc(self):
-        fig = plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'],std_orientation=False)
-        fig.axes[0].set_title('Calib plot 3-class, labels={A,B,C}')
-        _save_clf(fig,"TestCalibPlot.test_3_class_conf_acc")
+        # Plot all in one image
+        fig, axes = plt.subplots(2,2,figsize=(10,10))
+        # std
+        plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[0,0], title='std')
+        # flip x
+        plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[0,1], flip_x=True, title='flip x')
+        # flip y
+        plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[1,0], flip_y=True, title='flip y')
+        # flip both
+        plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[1,1], flip_x=True, flip_y=True, title='both')
+        _save_clf(fig,"TestCalibPlot.test_3_class_flip")
 
 
 class TestBubblePlot(unittest.TestCase):
