@@ -322,14 +322,16 @@ def plot_pred_intervals(y_true,
         label = correct_label,
         marker = correct_marker,
         alpha = correct_alpha,
-        color = correct_color)
+        color = correct_color,
+        zorder = 2.5)
     # incorrects
     ax.scatter(xs[incorr_ind],
         ys[incorr_ind],
         label = incorrect_label,
         marker = incorrect_marker,
         alpha = incorrect_alpha,
-        color = incorrect_color)
+        color = incorrect_color,
+        zorder = 2.5)
 
     # Print some labels and title if appropriate
     _set_label_if_not_set(ax, y_label, x_axis=False)
