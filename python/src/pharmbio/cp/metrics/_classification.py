@@ -21,7 +21,6 @@ _default_significance = 0.8
 ### OBSERVED METRICS
 ######################################
 
-
 def frac_error(y_true, p_values, sign):
     """**Classification** - Calculate the fraction of errors
 
@@ -124,9 +123,6 @@ def _get_predicted(p_vals,sign_vals):
     for i, s in enumerate(sign_vals):
         preds[:,:,i] = p_vals > s
     return preds
-
-
-
 
 def _unobs_frac_single_label_preds(p_values, sign):
     """**Classification** - Calculate the fraction of single label predictions
@@ -419,6 +415,102 @@ def confusion_matrix(y_true,
         result_matrix = result_matrix.astype(int)
     
     return pd.DataFrame(result_matrix, columns=labels, index = row_labels)
+
+def confusion_matrices_multiclass(y_true, 
+                            p_values, 
+                            sign, 
+                            labels=None, 
+                            normalize_per_class = False):
+    """**Classification** - Calculate two confusion matrix only for the incorrect multiclasses and only for the correct multiclass
+    
+    The correct multiclass confusion matrix will demonstrate the distribution of classes available in the multiclass cases where 
+    the true class is part of the multiclass. The incorrect multiclass confusion matrix will demonstrate the distribution of classes available in the multiclass cases where 
+    the true class is not part of the multiclass.
+
+    For the binary case the same matrix will be returned twice.
+    
+    Parameters
+    ----------
+    y_true : 1D numpy array, list or pandas Series
+        True labels
+    
+    p_values : 2D numpy array or DataFrame
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    
+    sign : float in [0,1]
+        Significance the confusion matrix should be calculated for
+    
+    labels : list of str, optional
+        Descriptive labels for the classes
+    
+    normalize_per_class : bool, optional
+        Normalizes the count so that each column sums to 1, good when visualizing imbalanced datasets (default False)
+    
+    Returns
+    -------
+    cm : pandas DataFrame
+        The confusion matrix 
+    """
+    validate_sign(sign)
+    p_values = to_numpy2D(p_values,'p_values')
+    y_true = to_numpy1D_int(y_true, 'y_true')
+    check_consistent_length(y_true, p_values)
+    
+    predictions = p_values > sign
+    n_class = p_values.shape[1]
+    
+    # We create two different 'multi-label' predictions, either including or excluding the correct label
+    if n_class == 2:
+        correct_result_matrix = np.zeros((n_class, n_class))
+    else:
+        correct_result_matrix = np.zeros((n_class, n_class))
+        incorrect_result_matrix = np.zeros((n_class, n_class))
+
+    labels = get_str_labels(labels, get_n_classes(y_true,p_values))
+    
+    # For every observed class - t
+    for t in range(n_class):
+        
+        # Get the predictions for this class
+        t_filter = y_true == t
+        t_predictions = predictions[t_filter]
+        
+        # multi-label predictions for class t
+        t_multi_preds = t_predictions.sum(axis=1) > 1
+        if ~t_multi_preds.any():
+            correct_result_matrix[t] = np.zeros((1, n_class))
+            incorrect_result_matrix[t] = np.zeros((1, n_class))
+        else:
+            t_multi_predictions = t_predictions[t_multi_preds]
+            if n_class == 2:
+                correct_result_matrix[t] =t_multi_predictions
+                incorrect_result_matrix[t] = t_multi_predictions
+            else:
+                # For multi-class we have two different multi-sets - correct or incorrect!
+                # first do a filter of rows that are multi-labeled then check t was predicted
+                t_multi_predictions
+                correct_predictions = t_multi_predictions[:,t] == True
+                correct_t_multi_predictions = t_multi_predictions[correct_predictions] #TODO sum  use np.add
+                correct_t_multi_predictions = correct_t_multi_predictions.astype(int)
+                incorrect_t_multi_predictions = t_multi_predictions[~correct_predictions]#TODO sum use np.add
+                incorrect_t_multi_predictions = incorrect_t_multi_predictions.astype(int)
+
+                summed_correct_t_multi_predictions = np.sum(correct_t_multi_predictions, axis=0, dtype=int)  
+                summed_incorrect_t_multi_predictions = np.sum(incorrect_t_multi_predictions, axis=0, dtype=int)  
+
+                correct_result_matrix[t] = summed_correct_t_multi_predictions
+                incorrect_result_matrix[t] = summed_incorrect_t_multi_predictions  
+
+    row_labels = list(labels)
+     
+    if normalize_per_class:
+        correct_result_matrix = correct_result_matrix / correct_result_matrix.sum(axis=0)
+        incorrect_result_matrix = incorrect_result_matrix / incorrect_result_matrix.sum(axis=0)
+    else:
+        correct_result_matrix = correct_result_matrix.astype(int)
+        incorrect_result_matrix = incorrect_result_matrix.astype(int)
+
+    return pd.DataFrame(correct_result_matrix, columns=labels, index = row_labels), pd.DataFrame(incorrect_result_matrix, columns=labels, index = row_labels)
 
 ########################################
 ### UNOBSERVED METRICS
