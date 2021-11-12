@@ -85,6 +85,7 @@ class TestConfusionMatrix(unittest.TestCase):
         ])
         self.assertTrue(np.array_equal(cm.to_numpy(), expected_CM))
     
+    ## Ebba TODO write test
     
     def test_normalize_3(self):
         p_vals_m = np.array(
