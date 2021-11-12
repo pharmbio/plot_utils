@@ -700,7 +700,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     y_coords = np.array(y_coords, dtype=object).astype(str)
     sizes_scaled = scale_factor * 2500 * sizes / sizes.max()
     
-    ax.scatter(x_coords, y_coords, s=sizes_scaled,c=colors,edgecolors='black',**kwargs)
+    ax.scatter(x_coords, y_coords, s=sizes_scaled, c=colors, edgecolors='black', **kwargs)
 
     ax.margins(.3)
     ax.set_xlabel("Observed")
