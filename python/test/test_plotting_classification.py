@@ -23,6 +23,11 @@ p_vals_3_class = data3class[:,1:]
 cm_3_class_015 = metrics.confusion_matrix( true_labels_3_class, p_vals_3_class, sign=0.15 )
 # print(type(true_labels_3class))
 
+# hER predictions
+er_data = np.genfromtxt('resources/er.p-values.csv', delimiter=',', skip_header=0)
+er_labels = er_data[:,0].astype(np.int16)
+er_pvals = er_data[:,1:]
+
 
 class TestPValuesPlot(unittest.TestCase):
     def test_2_class(self):
@@ -41,13 +46,58 @@ class TestPValuesPlot(unittest.TestCase):
         _save_clf(fig,"TestPValuesPlot.test_3_class21")
     
     def test_3_class_only_send_2pvals(self):
-        fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class[:,[0,1]])
-        fig.axes[0].set_title('p0/p1 3-class (2-vals sent)')
+        fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class[:,[0,1]],title='p0/p1 3-class (2-vals sent)')
+        #fig.axes[0].set_title('p0/p1 3-class (2-vals sent)')
         _save_clf(fig,"TestPValuesPlot.test_3_class_only_send_2pvals")
     
     def test_cols_outside_range(self):
         with self.assertRaises(ValueError):
             plotting.plot_pvalues(true_labels_2_class, p_values=p_vals_2_class, cols=[2,1])
+    
+    def test_her(self):
+        from matplotlib.markers import MarkerStyle
+        non_filled_o = MarkerStyle(marker='o', fillstyle='none')
+
+        markers_ls = [None,'*',['*','o'],[non_filled_o,'*']]
+        colors = [None, ['r','b'],'k']
+        
+        # FREQ order
+        freq_fig, axes = plt.subplots(3,4,figsize = (5*4,5*3))
+        for row, c in enumerate(colors):
+            for col, m in enumerate(markers_ls):
+                plotting.plot_pvalues(er_labels, er_pvals,
+                    ax=axes[row,col], 
+                    order=None,
+                    cm = c,
+                    markers=m,
+                    fontargs={'fontsize':'large'})
+        freq_fig.tight_layout()
+        _save_clf(freq_fig,"TestPValuesPlot.hER_all_freq")
+
+        label_fig, axes = plt.subplots(3,4,figsize = (5*4,5*3))
+        # class order
+        for row, c in enumerate(colors):
+            for col, m in enumerate(markers_ls):
+                plotting.plot_pvalues(er_labels, er_pvals,
+                    ax=axes[row,col], 
+                    order='class',
+                    cm = c,
+                    markers=m,fontargs={'fontsize':'large'})
+        label_fig.tight_layout()
+        _save_clf(label_fig,"TestPValuesPlot.hER_all_class")
+
+        rev_label_fig, axes = plt.subplots(3,4,figsize = (5*4,5*3))
+        # class order
+        for row, c in enumerate(colors):
+            for col, m in enumerate(markers_ls):
+                plotting.plot_pvalues(er_labels, er_pvals,
+                    ax=axes[row,col], 
+                    order='rev class',
+                    cm = c,
+                    markers=m,fontargs={'fontsize':'large'})
+        rev_label_fig.tight_layout()
+        _save_clf(rev_label_fig,"TestPValuesPlot.hER_all_rev_class")
+
 
 class TestLabelDistributionPlot(unittest.TestCase):
 

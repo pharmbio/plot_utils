@@ -1,7 +1,8 @@
 """CP Classification plots
 """
 import matplotlib as mpl
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
+#from matplotlib.patches import Patch
 import numpy as np
 from sklearn.utils import check_consistent_length
 import pandas as pd
@@ -30,6 +31,31 @@ __default_incorr_multi_label_color = __default_color_map.pop(2)
 ### CLASSIFICATION
 ####################################
 
+
+def __plot_freq(ax,y,ps,s,c,m,unique_labels,cols,str_labels,add_legend=False,**kwargs):
+    '''Helper function for `plot_pvalues`, used for plotting using order="freq" '''
+    # Count them
+    counts = np.zeros(len(unique_labels))
+    for i,l in enumerate(unique_labels):
+        counts[i] = (y==l).sum()
+    l_order = np.argsort(- counts)
+
+    for l in unique_labels[l_order]:
+
+        if add_legend:
+            kw = kwargs.copy()
+            kw['label']=str_labels[l]
+        else:
+            kw = kwargs
+        l_mask = y==l
+        ax.scatter(x = ps[l_mask,cols[0]],
+            y = ps[l_mask,cols[1]],
+            s = s[l_mask], 
+            c = c[l_mask], 
+            marker = m[l],
+            **kw)
+
+
 def plot_pvalues(y_true,
     p_values,
     cols = [0,1],
@@ -41,6 +67,7 @@ def plot_pvalues(y_true,
     markers = None,
     sizes = None,
     order = "freq",
+    split_chart = True,
     title = None,
     x_label = 'p-value {class}',
     y_label = 'p-value {class}',
@@ -76,27 +103,32 @@ def plot_pvalues(y_true,
     cm : color, list of colors or ListedColorMap, optional
         Colors to plot each class with, index 0 for class 0, etc.
 
-    markers : str or list of str, optional
+    markers : None, str or list of str, optional
         Markers to use, if a single one is given, all points/classes will get that marker,
-        if a list is given index 0 will be used for class 0, etc. If the list is of the same length
-        as the number of predictions each example will get their own marker
+        if a list is given index 0 will be used for class 0, etc. 
 
     sizes : float or list of float, optional
         Size(s) to use for all predictions or for predictions for each class
 
     order : {'freq', 'class', 'label', None}
         Order in which the points are plotted, options:
-        'freq' : plot each half of the plot independently, choosing the order by
-            the frequency of each class - so the smallest class is plotted last.
-            This will make it less likely that outliers are hidden by points plotted later
-        'class' / 'label' / None : Plot based on order of classes, i.e. plot class 0, 1, 2,..
+        'freq', None : Use the frequency of the classes in order to plot the most frequent first, then
+            the second most frequent class etc. When `split_chart`=`True` each half of the plot
+            is treated independently.
+        'class' / 'label' : Plot based on order of classes, i.e. plot class 0, 1, 2,..
+        'rev class' / 'rev label' : Plot based on the reverse order of classes, highest, next-highest,..,0
+    
+    split_chart : bool, optional
+        Treat the upper-left and lower-right halves of the chart independently
+        with respect to the `order` of the plotting of points. I.e. the frequency is 
+        calculated for each half of the chart independently. Ignored if `order` != "freq"
 
     title : str, optional
-        A title to add to the figure (default None)
+        A title to add to the axes (default None)
 
     x_label, y_label : str, optional
         label for the x/y-axis, default is 'p-value {class x/y}' where x/y is based on the `cols` parameter
-        If None is given, no x/y-label is added to the figure
+        If None is given, no x/y-label is added to the axes
 
     add_legend : bool, optional
         If a legend should be added to the figure (Default True)
@@ -119,16 +151,17 @@ def plot_pvalues(y_true,
     --------
     matplotlib.colors.ListedColormap
     """
+
     # Verify and convert to correct format
     y_true = to_numpy1D_int(y_true, 'y_true')
-    unique_labels = np.sort(np.unique(y_true).astype(int))
+    unique_labels = np.sort(np.unique(y_true).astype(np.int16))
     p_values = to_numpy2D(p_values, 'p_values')
     check_consistent_length(y_true,p_values)
 
     n_pvals = p_values.shape[1]
 
     # Verify cols argument
-    if cols is None or not isinstance(cols, list):
+    if cols is None or not isinstance(cols, (list,tuple)):
         raise ValueError('parameter cols must be a list of integer')
     if len(cols) != 2:
         raise ValueError('parameter cols must only have 2 values (can only plot 2D)')
@@ -141,7 +174,11 @@ def plot_pvalues(y_true,
     fontargs = fontargs if fontargs is not None else {}
 
     # Validate the order-argument
-    if order is not None and not isinstance(order, str):
+    if order is None:
+        pass
+    elif isinstance(order, str):
+        order = order.lower()
+    else: 
         raise TypeError('parameter order must be None or str, was {}'.format(type(order)))
 
     # Set the color-map (list)
@@ -150,109 +187,126 @@ def plot_pvalues(y_true,
     # Verify the labels
     n_class = get_n_classes(y_true, p_values)
     labels = get_str_labels(labels, n_class)
+    n_ex = len(y_true)
     
-    # Set the markers to a list
+    # plt_markers as list of length n_class
     if markers is None:
         # default
-        plt_markers = [mpl.rcParams["scatter.marker"]]
-    elif isinstance(markers, list):
-        # Unique markers for all
-        plt_markers = markers
+        plt_markers = [mpl.rcParams["scatter.marker"]]*n_class
+    elif isinstance(markers, (list,tuple)):
+        if len(markers) >= n_class:
+            plt_markers = markers
+        else:
+            raise TypeError('parameter markers must be None, str or list of same size as number of classes, was list of length {}'.format(len(markers)))
     else:
         # not a list - same marker for all
-        plt_markers = [markers]
+        plt_markers = [markers]*n_class
     
-    # Set the size of the markers
+    # plt_sizes as ndarray of shape (n_ex,) 
     if sizes is None:
-        plt_sizes = [None] # Default
-    elif isinstance(sizes, list):
-        plt_sizes = sizes
+        plt_sizes = np.array([mpl.rcParams['lines.markersize'] ** 2]*n_ex) # Default
+    elif isinstance(sizes, list) or isinstance(sizes,np.ndarray):
+        if len(sizes) == n_ex:
+            plt_sizes = np.array(sizes)
+        elif len(sizes) == n_class:
+            plt_sizes = np.empty(n_ex, dtype=np.float64)
+            for l in unique_labels:
+                plt_sizes[y_true == l] = sizes[l]
+        elif len(sizes) == 1:
+            plt_sizes = np.full(n_ex, fill_value=sizes)
+        else:
+            raise TypeError('parameter sizes must be None, float or list of same size as number of classes or number of plotted points, was list of length {}'.format(len(sizes)))
     else:
-        plt_sizes = [sizes]
+        plt_sizes = np.full(n_ex, fill_value=sizes)
     
+    # Color as ndarray of shape (n_ex,)
+    if len(colors) == n_ex:
+        # One color per instance, have to convert to ndarray
+        plt_c = np.array(n_ex)
+    elif len(colors) == 1:
+        # Same color for all instances
+        if isinstance(colors[0],(tuple,list)):
+            plt_c = np.full((n_ex,len(colors[0])),fill_value=colors[0])
+        else:
+            plt_c = np.full(n_ex,fill_value=colors[0])
+    else:
+        # One color per class
+        if isinstance(colors[0],(str,np.str_)):
+            plt_c = np.empty(n_ex, dtype=np.str_)
+        elif isinstance(colors[0], (tuple,list)):
+            # RGB or RGBA color tuples
+            plt_c = np.empty((n_ex,len(colors[0])),dtype=np.float64)
+        else:
+            raise ValueError('color input of un-recognized type: {}'.format(type(colors[0])))
+        for l in unique_labels:
+            plt_c[y_true==l] = colors[l]
+
+    # --------------------
     # Do the plotting
-    if order is None or (order.lower() == 'class' or order.lower() == 'label') :
-        # Use the order of the labels simply 
-        for lab in unique_labels:
-            label_filter = np.array(y_true == lab)
-            x = p_values[label_filter, cols[0]]
-            y = p_values[label_filter, cols[1]]
-            ax.scatter(x, y, 
-                s = plt_sizes[lab % len(plt_sizes)], 
-                color = colors[lab % len(colors)], 
-                marker = plt_markers[lab % len(plt_markers)], 
+    # --------------------
+    if order is None or (order == 'none') or (order == 'freq'):
+
+        # If sides of chart should be treated independently
+        if split_chart:
+            # Create a mask for upper-left
+            ul_mask = p_values[:,cols[0]] < p_values[:,cols[1]]
+            __plot_freq(ax,y_true[ul_mask],p_values[ul_mask],plt_sizes[ul_mask],
+                plt_c[ul_mask],plt_markers,unique_labels,
+                cols,labels,add_legend=False,**kwargs)
+            # Do lower-right 
+            __plot_freq(ax,y_true[~ul_mask],p_values[~ul_mask],plt_sizes[~ul_mask],
+                plt_c[~ul_mask],plt_markers,unique_labels,
+                cols,labels,add_legend=True,**kwargs)
+        else:
+            # Here look at overall frequency of each class
+            __plot_freq(ax,y_true,p_values,
+                plt_c,plt_markers,unique_labels,
+                cols,labels,add_legend=True,**kwargs)
+
+    elif ('class' in order or 'label' in order) and 'rev' in order:
+        # Use the reerse order of the labels 
+        rev = np.flip(unique_labels)
+        for lab in rev:
+            l_mask = y_true == lab
+           
+            ax.scatter(
+                p_values[l_mask, cols[0]], 
+                p_values[l_mask, cols[1]], 
+                s = plt_sizes[l_mask], 
+                color = plt_c[l_mask], 
+                marker = plt_markers[lab], 
                 label = labels[lab],
                 **kwargs)
-        # The order is now based on the unique_labels list-so adding a legend is straight forward
-        if add_legend:
-            ax.legend(loc='upper right',**fontargs)
-    elif order.lower() == 'freq':
-        # Try to use a smarter apporach
-        num_ul = []
-        num_lr = []
-        num_per_label = []
-        # Compute the order of classes to plot
+    elif order == 'class' or order == 'label' :
+        # Use the order of the labels 
         for lab in unique_labels:
-            label_filter = np.array(y_true == lab)
-            x = p_values[label_filter, cols[0]]
-            y = p_values[label_filter, cols[1]]
-            num_per_label.append(len(x))
-            # the number in lower-right part and upper-left
-            num_lr.append((x>y).sum())
-            num_ul.append(x.shape[0] - num_lr[-1])
-        
-        # Normalize for size
-        num_ul = np.array(num_ul) / np.array(num_per_label)
-        num_lr = np.array(num_lr) / np.array(num_per_label)
-        
-        # Plot the upper-left section
-        lab_order, handles = [], []
-        ul_sorting = np.argsort(num_ul)[::-1]
-        for lab in unique_labels[ul_sorting]:
-            label_filter = np.array(y_true == lab)
-            x = p_values[label_filter, cols[0]]
-            y = p_values[label_filter, cols[1]]
-            upper_left_filter = y >= x
-            x = x[upper_left_filter]
-            y = y[upper_left_filter]
-            handle = ax.scatter(x, y, 
-                s = plt_sizes[lab % len(plt_sizes)], 
-                color = colors[lab % len(colors)], 
-                marker = plt_markers[lab % len(plt_markers)], 
+            l_mask = y_true == lab
+            
+            ax.scatter(
+                p_values[l_mask, cols[0]], 
+                p_values[l_mask, cols[1]], 
+                s = plt_sizes[l_mask], 
+                color = plt_c[l_mask], 
+                marker = plt_markers[lab],
+                label = labels[lab],
                 **kwargs)
-            lab_order.append(lab)
-            handles.append(handle)
-
-        # Plot the lower-right section
-        lr_sorting = np.argsort(num_lr)[::-1]
-        for lab in unique_labels[lr_sorting]:
-            label_filter = np.array(y_true == lab)
-            x = p_values[label_filter, cols[0]]
-            y = p_values[label_filter, cols[1]]
-            lower_right_filter = y < x
-            x = x[lower_right_filter]
-            y = y[lower_right_filter]
-            # Skip the labels in second one!
-            ax.scatter(x, y, 
-                s = plt_sizes[lab % len(plt_sizes)], 
-                color = colors[lab % len(colors)], 
-                marker = plt_markers[lab % len(plt_markers)], 
-                **kwargs)
-        # Add legend - in correct order
-        if add_legend:
-            ls, hs = zip(*sorted(zip(lab_order, handles), key=lambda t: t[0]))
-            ax.legend(hs, [labels[x] for x in ls], loc='upper right', **fontargs)
     else:
         raise ValueError('parameter order not any of the allowed values: ' + str(order))
+    # --------------------
+    # End of plotting 
+    # --------------------
+
+    if add_legend:
+        ax.legend(loc='upper right',**{'fontsize':'large',**fontargs})
     
     # Set some labels and title
     if y_label is not None:
         y_label = y_label.replace('{class}', str(labels[cols[1]]))
-        ax.set_ylabel(y_label,**fontargs)
+        ax.set_ylabel(y_label,**{'fontsize':'large',**fontargs})
 
     if x_label is not None:
         x_label = x_label.replace('{class}', str(labels[cols[0]]))
-        ax.set_xlabel(x_label,**fontargs)
+        ax.set_xlabel(x_label,**{'fontsize':'large',**fontargs})
 
     _set_title(ax,title)
     

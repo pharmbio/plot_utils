@@ -24,7 +24,7 @@ _default_significance = 0.8
 def frac_error(y_true, p_values, sign):
     """**Classification** - Calculate the fraction of errors
 
-    Calculate the fraction of erronious predictions at a given significance level `sign`
+    Calculate the fraction of erroneous predictions at a given significance level `sign`
     
     Parameters
     ----------
