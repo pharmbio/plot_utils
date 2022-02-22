@@ -32,7 +32,7 @@ __default_incorr_multi_label_color = __default_color_map.pop(2)
 ####################################
 
 
-def __plot_freq(ax,y,ps,s,c,m,unique_labels,cols,str_labels,add_legend=False,**kwargs):
+def __plot_freq(ax,y,ps,s,c,m,alphas,unique_labels,cols,str_labels,add_legend=False,**kwargs):
     '''Helper function for `plot_pvalues`, used for plotting using order="freq" '''
     # Count them
     counts = np.zeros(len(unique_labels))
@@ -53,8 +53,19 @@ def __plot_freq(ax,y,ps,s,c,m,unique_labels,cols,str_labels,add_legend=False,**k
             s = s[l_mask], 
             c = c[l_mask], 
             marker = m[l],
-            **kw)
+            **__get_kwargs(kw,alphas,l))
 
+def __get_kwargs(kwargs, alphas, cls):
+    if alphas is None:
+        return kwargs
+    elif isinstance(alphas, float):
+        return {'alpha':alphas, **kwargs}
+    elif isinstance(alphas,(list,tuple)):
+        if len(alphas) < cls:
+            raise ValueError('parameter `alphas` must be a single float, or list/tuple of floats of same length as number of classes, was list/tuple of length = {}, while number of classes is greater'.format(len(alphas)))
+        return {'alpha':alphas[cls], **kwargs}
+    else:
+        raise ValueError('parameter `alphas` must be a single float, or list/tuple of floats of same length as number of classes, was: {}'.format(type(alphas)))
 
 def plot_pvalues(y_true,
     p_values,
@@ -65,6 +76,7 @@ def plot_pvalues(y_true,
     chart_padding = 0.025,
     cm = None,
     markers = None,
+    alphas = None,
     sizes = None,
     order = "freq",
     split_chart = True,
@@ -105,7 +117,13 @@ def plot_pvalues(y_true,
 
     markers : None, str or list of str, optional
         Markers to use, if a single one is given, all points/classes will get that marker,
-        if a list is given index 0 will be used for class 0, etc. 
+        if a list is given index 0 will be used for class 0, etc.
+    
+    alphas : None, list or tuple of floats, optional
+        In case different alphas should be used for the classes, pass a list of
+        floats order for class 0,1,... in case a single alpha value so be applied
+        to all points, simply pass `alpha` which is then passed using the `kwargs`
+        to matplotlib 
 
     sizes : float or list of float, optional
         Size(s) to use for all predictions or for predictions for each class
@@ -251,16 +269,16 @@ def plot_pvalues(y_true,
             # Create a mask for upper-left
             ul_mask = p_values[:,cols[0]] < p_values[:,cols[1]]
             __plot_freq(ax,y_true[ul_mask],p_values[ul_mask],plt_sizes[ul_mask],
-                plt_c[ul_mask],plt_markers,unique_labels,
+                plt_c[ul_mask],plt_markers,alphas,unique_labels,
                 cols,labels,add_legend=False,**kwargs)
             # Do lower-right 
             __plot_freq(ax,y_true[~ul_mask],p_values[~ul_mask],plt_sizes[~ul_mask],
-                plt_c[~ul_mask],plt_markers,unique_labels,
+                plt_c[~ul_mask],plt_markers,alphas,unique_labels,
                 cols,labels,add_legend=True,**kwargs)
         else:
             # Here look at overall frequency of each class
             __plot_freq(ax,y_true,p_values,
-                plt_c,plt_markers,unique_labels,
+                plt_c,plt_markers,alphas,unique_labels,
                 cols,labels,add_legend=True,**kwargs)
 
     elif ('class' in order or 'label' in order) and 'rev' in order:
@@ -268,16 +286,17 @@ def plot_pvalues(y_true,
         rev = np.flip(unique_labels)
         for lab in rev:
             l_mask = y_true == lab
-           
+
             ax.scatter(
                 p_values[l_mask, cols[0]], 
                 p_values[l_mask, cols[1]], 
                 s = plt_sizes[l_mask], 
-                color = plt_c[l_mask], 
+                c = plt_c[l_mask], 
                 marker = plt_markers[lab], 
                 label = labels[lab],
-                **kwargs)
-    elif order == 'class' or order == 'label' :
+                **__get_kwargs(kwargs, alphas,lab))
+
+    elif order == 'class' or order == 'label':
         # Use the order of the labels 
         for lab in unique_labels:
             l_mask = y_true == lab
@@ -286,10 +305,10 @@ def plot_pvalues(y_true,
                 p_values[l_mask, cols[0]], 
                 p_values[l_mask, cols[1]], 
                 s = plt_sizes[l_mask], 
-                color = plt_c[l_mask], 
+                c = plt_c[l_mask], 
                 marker = plt_markers[lab],
                 label = labels[lab],
-                **kwargs)
+                **__get_kwargs(kwargs, alphas,lab))
     else:
         raise ValueError('parameter order not any of the allowed values: ' + str(order))
     # --------------------

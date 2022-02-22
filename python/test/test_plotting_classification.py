@@ -53,15 +53,20 @@ class TestPValuesPlot(unittest.TestCase):
     def test_cols_outside_range(self):
         with self.assertRaises(ValueError):
             plotting.plot_pvalues(true_labels_2_class, p_values=p_vals_2_class, cols=[2,1])
-    
+
     def test_her(self):
+        import matplotlib as mpl
         from matplotlib.markers import MarkerStyle
+        import seaborn as sns
+        sns.set_style('ticks')
+
         non_filled_o = MarkerStyle(marker='o', fillstyle='none')
 
         markers_ls = [None,'*',['*','o'],[non_filled_o,'*']]
-        colors = [None, ['r','b'],'k']
+        colors = [None, ['r','b'],'y']
         
         # FREQ order
+        # print("FREQ ORDER")
         freq_fig, axes = plt.subplots(3,4,figsize = (5*4,5*3))
         for row, c in enumerate(colors):
             for col, m in enumerate(markers_ls):
@@ -69,11 +74,13 @@ class TestPValuesPlot(unittest.TestCase):
                     ax=axes[row,col], 
                     order=None,
                     cm = c,
+                    alphas= [.9,.5],
                     markers=m,
-                    fontargs={'fontsize':'large'})
+                    fontargs={'fontsize':'medium'})
         freq_fig.tight_layout()
         _save_clf(freq_fig,"TestPValuesPlot.hER_all_freq")
 
+        # print("CLS ORDER")
         label_fig, axes = plt.subplots(3,4,figsize = (5*4,5*3))
         # class order
         for row, c in enumerate(colors):
@@ -81,20 +88,28 @@ class TestPValuesPlot(unittest.TestCase):
                 plotting.plot_pvalues(er_labels, er_pvals,
                     ax=axes[row,col], 
                     order='class',
+                    alpha=0.8, # Same alpha for both
+                    # alphas = [.8,.75], # default
                     cm = c,
-                    markers=m,fontargs={'fontsize':'large'})
+                    markers=m,
+                    # edgecolors='face',
+                    sizes = mpl.rcParams['lines.markersize']**2,
+                    lw=1.5,
+                    fontargs={'fontsize':'large'})
         label_fig.tight_layout()
         _save_clf(label_fig,"TestPValuesPlot.hER_all_class")
 
+        # print("REV ORDER")
+        # reverse class order
         rev_label_fig, axes = plt.subplots(3,4,figsize = (5*4,5*3))
-        # class order
         for row, c in enumerate(colors):
             for col, m in enumerate(markers_ls):
                 plotting.plot_pvalues(er_labels, er_pvals,
                     ax=axes[row,col], 
                     order='rev class',
                     cm = c,
-                    markers=m,fontargs={'fontsize':'large'})
+                    alphas= [.3,.75],
+                    markers=m,fontargs={'fontsize':'x-large'})
         rev_label_fig.tight_layout()
         _save_clf(rev_label_fig,"TestPValuesPlot.hER_all_rev_class")
 
