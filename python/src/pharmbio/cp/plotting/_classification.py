@@ -112,6 +112,10 @@ def plot_pvalues(y_true,
     figsize : float or (float, float), optional
         Figure size to generate, ignored if `ax` is given
 
+    chart_padding : float or (float,float), default = 0.025
+        Padding as percentage of the value range, if a single value is given the same padding is applied to both axes. 
+        For two values, the first is applied to x-axes and the second to the y-axes.
+
     cm : color, list of colors or ListedColorMap, optional
         Colors to plot each class with, index 0 for class 0, etc.
 
