@@ -119,7 +119,7 @@ class TestObservedMetrics(unittest.TestCase):
 
         multiclass_data = np.genfromtxt('resources/multiclass.csv', delimiter=',')
         self.m_p_values = multiclass_data[:,1:]
-        self.m_true_labels = multiclass_data[:,:1].astype(np.int)
+        self.m_true_labels = multiclass_data[:,:1].astype(int)
 
     def test_3D_frac_err(self):
         sign_vals = [0.7,0.8,0.9]

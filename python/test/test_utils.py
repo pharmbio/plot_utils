@@ -79,6 +79,10 @@ class TestPlottingUtils(unittest.TestCase):
         with self.assertRaises(TypeError):
             plt_utils.get_fig_and_axis(figsize="")
     
+    def test_faulty_ax_param(self):
+        with self.assertRaises(TypeError):
+            plt_utils.get_fig_and_axis(ax=1)
+    
     def test_utility_save_func(self):
         fig, _ = plt_utils.get_fig_and_axis(figsize=(10,5))
         _save_reg(fig,'test_utility_save_func')

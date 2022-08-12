@@ -117,13 +117,13 @@ def convert_regression(data,
     if data.ndim != 2:
         raise ValueError('Input must be a 2D array type')
     
-    ys = data[:,y_true_index].astype(np.float) if y_true_index is not None else None
+    ys = data[:,y_true_index].astype(np.float64) if y_true_index is not None else None
 
     if len(min_index) != len(max_index):
         raise ValueError('min_index and max_index must be of same length')
     
     # Allocate matrix
-    preds = np.zeros((len(data),2,len(min_index)),dtype=np.float)
+    preds = np.zeros((len(data),2,len(min_index)),dtype=np.float64)
 
     for s, (min,max) in enumerate(zip(min_index,max_index)):
         preds[:,0,s] = data[:,min]

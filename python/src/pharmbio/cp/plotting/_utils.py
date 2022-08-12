@@ -19,8 +19,9 @@ except ImportError as e:
     logging.debug('Seaborn not available - using Matplotlib defaults')
     pass 
 
+__DEFAULT_FIG_SIZE = (10,8)
 
-def get_fig_and_axis(ax=None, figsize = (10,8)):
+def get_fig_and_axis(ax=None, figsize = __DEFAULT_FIG_SIZE):
     '''Function for instantiating a Figure / axes object
 
     Validates the input parameters, instantiates a Figure and axes if not
@@ -38,15 +39,18 @@ def get_fig_and_axis(ax=None, figsize = (10,8)):
     
     Returns
     -------
-    fig : Figure
+    fig : matplotlib Figure
     
     ax : matplotlib Axes
 
     Raises
     ------
     TypeError
-        If `figsize` is of invalid type
+        If `figsize` or `ax` is of invalid type 
     '''
+    # Override if figsize is None
+    if figsize is None:
+        figsize = __DEFAULT_FIG_SIZE
     
     if ax is None:
         # No current axes, create a new Figure
@@ -58,6 +62,8 @@ def get_fig_and_axis(ax=None, figsize = (10,8)):
             raise TypeError('parameter figsize must either be float or (float, float), was: {}'.format(type(figsize)))
         # Add an axes spanning the entire Figure
         ax = fig.add_subplot(111)
+    elif not isinstance(ax, mpl.axes.Axes):
+        raise TypeError('parameter ax must be either None or a matplotlib.axes object, was: {}'.format(type(ax)))
     else:
         fig = ax.get_figure()
     

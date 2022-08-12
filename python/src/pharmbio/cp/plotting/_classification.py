@@ -1,8 +1,7 @@
 """CP Classification plots
 """
 import matplotlib as mpl
-#import matplotlib.pyplot as plt
-#from matplotlib.patches import Patch
+import warnings
 import numpy as np
 from sklearn.utils import check_consistent_length
 import pandas as pd
@@ -533,8 +532,7 @@ def plot_label_distribution(y_true,
         Labels for the x and y axes. Defaults are given
 
     sign_vals : list of float, default np.arange(0,1,0.01)
-        Significance values to use, the `significance_` parameters will be ignored if this 
-        parameter was passed (default None)
+        Significance values to use
 
     cm : list of colors or ListedColorMap, optional
         Colors to use, given in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  
@@ -740,7 +738,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     colors = None
     if color_scheme is None:
         pass
-    elif color_scheme.lower() == "none":
+    elif color_scheme.lower() == 'none':
         pass
     elif color_scheme.lower() == 'prediction_size':
         n_class = confusion_matrix.shape[1]
@@ -750,13 +748,15 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
         if n_class > 2:
             colors.append(__default_multi_label_color)
         colors = colors*n_class
-    elif color_scheme.lower() == 'class' or color_scheme.lower() == 'label':
+        colors = np.array(colors,dtype=object)
+    elif color_scheme.lower() in ['class','label']:
         n_class = confusion_matrix.shape[1]
         n_rows = confusion_matrix.shape[0]
         colors = []
         for c in range(n_class):
             c_color = [__default_color_map[c]]*n_rows
             colors.extend(c_color)
+        colors = np.array(colors,dtype=object)
     elif color_scheme.lower() == 'full':
         colors = []
         n_class = confusion_matrix.shape[1]
@@ -769,26 +769,24 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
             if n_class > 2:
                 c_cols.append(__default_multi_label_color)
             colors.extend(c_cols)
+        colors = np.array(colors,dtype=object)
     else:
-        print('color_scheme=' +str(color_scheme) + " not recognized, falling back to None")
+        warnings.warn('color_scheme=\'{}\' not recognized, falling back to None'.format(color_scheme))
 
-    # Convert the x and y coordinates to strings
-    x_coords = np.array(x_coords, dtype=object).astype(str)
-    y_coords = np.array(y_coords, dtype=object).astype(str)
-    sizes_scaled = scale_factor * 2500 * sizes / sizes.max()
+    # Scale the size of the bubbles
+    sizes_scaled = scale_factor * 2500 * sizes / sizes.max() 
     
     ax.scatter(x_coords, y_coords, s=sizes_scaled, c=colors, edgecolors='black', **kwargs)
 
     ax.margins(.3)
-    ax.set_xlabel("Observed")
-    ax.set_ylabel("Predicted")
+    ax.set(xlabel='Observed', ylabel='Predicted')
     ax.invert_yaxis()
     _set_title(ax,title)
 
     # Write the number for each bubble
     if annotate is not None and annotate: 
         for xi, yi, zi, z_si in zip(x_coords, y_coords, sizes, sizes_scaled):
-            if isinstance(zi, float):
+            if isinstance(zi, (float,np.float16, np.float32, np.float64)):
                 zi = round(zi,2)
             ax.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
                     textcoords="offset points", ha="left", va="center")
@@ -858,7 +856,7 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
     
     _set_title(ax,title)
     ax = sns.heatmap(confusion_matrix, ax=ax, annot=True, cmap=cmap, cbar_kws=cbar_kws, **kwargs)
-    ax.set(xlabel='Predicted', ylabel='Observed')
+    ax.set(xlabel='Observed', ylabel='Predicted')
 
     if tight_layout:
         fig.tight_layout()

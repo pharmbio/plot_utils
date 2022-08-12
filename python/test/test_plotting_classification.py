@@ -156,7 +156,7 @@ class TestCalibrationPlot(unittest.TestCase):
 class TestBubblePlot(unittest.TestCase):
     
     def test_3_class(self):
-        fig1 = plotting.plot_confusion_matrix_bubbles(cm_3_class_015)
+        fig1 = plotting.plot_confusion_matrix_bubbles(cm_3_class_015,color_scheme=None)
         fig1.axes[0].set_title('Bubbles 3-class 0.15')
         _save_clf(fig1,"TestBubblebPlot.test_3_class")
     
@@ -168,6 +168,10 @@ class TestBubblePlot(unittest.TestCase):
         fig3 = plotting.plot_confusion_matrix_bubbles(cm_2_class_075)
         fig3.axes[0].set_title('Bubbles 2-class 0.75')
         _save_clf(fig3,"TestBubblebPlot.test_2_class_2")
+    
+    def test_illegal_color_scheme(self):
+        with self.assertWarns(UserWarning):
+            fig_ = plotting.plot_confusion_matrix_bubbles(cm_2_class_015, color_scheme='bad_arg', annotate=False, scale_factor=5.5, figsize=(6,7))
 
 class TestConfusionMatrixHeatmap(unittest.TestCase):
 

@@ -60,8 +60,8 @@ def frac_error(y_true, p_values, sign):
 
     total_errors = 0
     # lists containing errors/counts for each class label
-    label_wise_errors = np.zeros(p_values.shape[1], dtype=np.float) # get an exception if not having float
-    label_wise_counts = np.zeros(p_values.shape[1], dtype=np.int)
+    label_wise_errors = np.zeros(p_values.shape[1], dtype=float) # get an exception if not having float
+    label_wise_counts = np.zeros(p_values.shape[1], dtype=int)
     
     for test_ex in range(0,p_values.shape[0]):
         ex_value = y_true[test_ex]
@@ -107,7 +107,7 @@ def frac_errors(y_true,p_values,sign_vals):
     (y_onehot, _) = to_numpy1D_onehot(y_true,'y_true',labels=np.arange(pval2D.shape[1]))
     overall_err = __calc_frac_errors(predicted[y_onehot])
 
-    cls_err = np.zeros((predicted.shape[2],y_onehot.shape[1]),dtype=np.float)
+    cls_err = np.zeros((predicted.shape[2],y_onehot.shape[1]),dtype=np.float32)
     for c in range(y_onehot.shape[1]):
         if y_onehot[:,c].sum() < 1:
             continue
@@ -119,7 +119,7 @@ def __calc_frac_errors(predictions):
     return (1 - (predictions.sum(axis=0) / predictions.shape[0])).reshape(-1)
 
 def _get_predicted(p_vals,sign_vals):
-    preds = np.empty((p_vals.shape[0],p_vals.shape[1],len(sign_vals)),dtype=np.bool)
+    preds = np.empty((p_vals.shape[0],p_vals.shape[1],len(sign_vals)),dtype=np.bool_)
     for i, s in enumerate(sign_vals):
         preds[:,:,i] = p_vals > s
     return preds
