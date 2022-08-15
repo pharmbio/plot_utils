@@ -4,7 +4,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.utils import check_consistent_length
-# from warnings import warn
 
 from pharmbio.cp.utils import to_numpy1D, to_numpy2D, validate_sign
 

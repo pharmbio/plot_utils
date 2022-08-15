@@ -1,5 +1,6 @@
 """CP Classification plots
 """
+import math
 import matplotlib as mpl
 import warnings
 import numpy as np
@@ -438,19 +439,9 @@ def plot_calibration_curve(y_true,
 
     # Find the x and y ranges and set the chart-size
     y_vals = np.concatenate((overall_frac,sign_vals))
-    # x_vals = np.array([np.min(sign_vals), np.max(sign_vals)])
-    # y_vals = np.array([np.min(overall_frac),(overall_frac)])
-    # y_vals = np.append(y_vals,x_vals)
-    # else:
-    #     x_vals = [np.min(sign_vals), np.max(sign_vals)]
-    # if flip_y:
-    #     y_vals = [1-np.min(overall_frac), np.max(overall_frac)]+ x_vals
-    # print(y_vals.shape)
     if plot_all_labels:
         y_vals = np.concatenate((y_vals,cls_frac.reshape(-1)))
-    # print(x_vals)
-    # print(y_vals)
-        # y_vals.append(np.max(cls_frac))
+
     _set_chart_size(ax,sign_vals,y_vals,
         padding=chart_padding,
         flip_x=flip_x,
@@ -670,6 +661,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     title=None,
     scale_factor = 1,
     annotate = True,
+    annotate_as_percentage = False,
     color_scheme = 'prediction_size',
     tight_layout = True,
     **kwargs):
@@ -694,13 +686,18 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     
     annotate : boolean, optional
         If the actual numbers should be printed next to each bubble.
+    
+    annotate_as_percentage : bool, optional
+        In case a *Normalized* confusion matrix is given, render the annotated labels as percentage expressions.
+        If the columns do not add to 1 in the `confusion_matrix` input the function will raise an `ValueError`.
+        Ignored if `annotate` is False.
 
     color_scheme : { None, 'None', 'prediction_size', 'label', 'class', 'full' }
         None/'None':=All in the same color 
         'prediction_size':=Color single/multi/empty in different colors
         'label'/'class':=Each class colored differently
         'full':=Correct single, correct multi, incorrect single, incorrect multi and empty colored differently
-    
+
     tight_layout : bool, optional
         Set `tight_layout` on the matplotlib Figure object
 
@@ -722,6 +719,13 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
         raise ValueError('parameter confusion_matrix is required')
     if not isinstance(confusion_matrix, pd.DataFrame):
         raise TypeError('argument confusion_matrix must be a pandas DataFrame')
+    
+    # Check input is normalized
+    if annotate_as_percentage:
+        col_sums = confusion_matrix.sum(axis=0)
+        for c in col_sums:
+            if not math.isclose(c,1.):
+                raise ValueError('Parameter confusion_matrix must be normalized')
 
     # Create Figure and Axes if not given
     fig, ax = get_fig_and_axis(ax, figsize)
@@ -788,7 +792,12 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
         for xi, yi, zi, z_si in zip(x_coords, y_coords, sizes, sizes_scaled):
             if isinstance(zi, (float,np.float16, np.float32, np.float64)):
                 zi = round(zi,2)
-            ax.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
+            
+            if annotate_as_percentage:
+                ax.annotate('%s %%' % round(zi*100,1),xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
+                    textcoords="offset points", ha="left", va="center")
+            else: 
+                ax.annotate(zi, xy=(xi, yi), xytext=(np.sqrt(z_si)/2.+5, 0),
                     textcoords="offset points", ha="left", va="center")
     
     if tight_layout:
