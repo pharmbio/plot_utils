@@ -12,7 +12,7 @@ _using_seaborn = False
 # Try to import sns as they create somewhat nicer plots
 try:
     import seaborn as sns
-    sns.set()
+    sns.set_theme()
     logging.debug('Using Seaborn plotting defaults')
     _using_seaborn = True
 except ImportError as e:
