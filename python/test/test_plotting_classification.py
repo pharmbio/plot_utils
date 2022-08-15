@@ -14,6 +14,7 @@ my_data = np.genfromtxt('resources/transporters.p-values.csv', delimiter=';', sk
 true_labels_2_class = (my_data[:,1] == 1).astype(np.int16)
 p_vals_2_class = my_data[:,[2,3]]
 cm_2_class_015 = metrics.confusion_matrix( true_labels_2_class, p_vals_2_class, sign=0.15 )
+cm_2_class_015_normalized = metrics.confusion_matrix( true_labels_2_class, p_vals_2_class, sign=0.15, normalize_per_class=True)
 cm_2_class_075 = metrics.confusion_matrix( true_labels_2_class, p_vals_2_class, sign=0.75 )
 
 # 3 class
@@ -159,6 +160,15 @@ class TestBubblePlot(unittest.TestCase):
         fig1 = plotting.plot_confusion_matrix_bubbles(cm_3_class_015,color_scheme=None)
         fig1.axes[0].set_title('Bubbles 3-class 0.15')
         _save_clf(fig1,"TestBubblebPlot.test_3_class")
+    
+    def test_2_class_percentage(self):
+        fig2 = plotting.plot_confusion_matrix_bubbles(cm_2_class_015_normalized, annotate=True, annotate_as_percentage=True, figsize=(6,7))
+        fig2.axes[0].set_title('Bubbles 2-class 0.15 - percentage - scale 5.5')
+        _save_clf(fig2,"TestBubblebPlot.test_2_class_1_percentage")
+
+        # Test without normalized CM
+        with self.assertRaises(ValueError):
+            _ = plotting.plot_confusion_matrix_bubbles(cm_2_class_015, annotate=True, annotate_as_percentage=True, figsize=(6,7))
     
     def test_2_class(self):
         fig2 = plotting.plot_confusion_matrix_bubbles(cm_2_class_015, annotate=False, scale_factor=5.5, figsize=(6,7))
