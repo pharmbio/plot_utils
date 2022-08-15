@@ -2,7 +2,7 @@
 Plotting library for conformal prediction metrics, intended to facilitate fast testing in e.g. notebooks.  
 
 ## Examples
-Example usage can be found in the [User Guide Classification notebook](python/User_guide_plotting.ipynb) and [User Guide Regression notebook](python/User_guide_regression.ipynb).
+Example usage can be found in the [User Guide Classification notebook](python/User_guide_classification.ipynb), [User Guide Regression notebook](python/User_guide_regression.ipynb) and [Nonconformist+plot_utils notebook](python/Nonconformist_and_plot_utils.ipynb).
 
 ## Dependencies
 - [matplotlib](https://matplotlib.org/)
