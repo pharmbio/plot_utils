@@ -56,7 +56,7 @@ class TestPValuesPlot(unittest.TestCase):
     
     def test_3_class_only_send_2pvals(self):
         fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class[:,[0,1]],cm=['r','b','k'],title='p0/p1 3-class (2-vals sent)')
-        #fig.axes[0].set_title('p0/p1 3-class (2-vals sent)')
+        fig.axes[0].set_title('p0/p1 3-class (2-vals sent)')
         _save_clf(fig,"TestPValuesPlot.test_3_class_only_send_2pvals")
     
     def test_cols_outside_range(self):
@@ -102,8 +102,6 @@ class TestPValuesPlot(unittest.TestCase):
                     # alphas = [.8,.75], # default
                     cm = c,
                     markers=m,
-                    #linewidths=1,
-                    # edgecolors='face',
                     sizes = mpl.rcParams['lines.markersize']**2,
                     lw=1.5,
                     fontargs={'fontsize':'large'})
