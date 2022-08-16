@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import sys
 
 from numpy.core.numeric import False_
+import scipy as sp
 sys.path.append('../src')
 from pharmbio.cp import metrics,plotting
 from test_utils import _save_clf
@@ -37,7 +38,7 @@ class TestPValuesPlot(unittest.TestCase):
         _save_clf(fig,"TestPValuesPlot.test_2_class")
     
     def test_3_class_01(self):
-        fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class)
+        fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class,split_chart=False)
         fig.axes[0].set_title('p0/p1 3-class')
         _save_clf(fig,"TestPValuesPlot.test_3_class01")
     
@@ -46,8 +47,15 @@ class TestPValuesPlot(unittest.TestCase):
         fig.axes[0].set_title('p2/p1 3-class')
         _save_clf(fig,"TestPValuesPlot.test_3_class21")
     
+    def test_3_class_only_send21(self):
+        excl_filter = true_labels_3_class == 0
+
+        fig = plotting.plot_pvalues(true_labels_3_class[~excl_filter], p_values=p_vals_3_class[~excl_filter], cols=[2,1])
+        fig.axes[0].set_title('p2/p1 3-class only single class 1 and 2')
+        _save_clf(fig,"TestPValuesPlot.test_3_class21_rm0")
+    
     def test_3_class_only_send_2pvals(self):
-        fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class[:,[0,1]],title='p0/p1 3-class (2-vals sent)')
+        fig = plotting.plot_pvalues(true_labels_3_class, p_values=p_vals_3_class[:,[0,1]],cm=['r','b','k'],title='p0/p1 3-class (2-vals sent)')
         #fig.axes[0].set_title('p0/p1 3-class (2-vals sent)')
         _save_clf(fig,"TestPValuesPlot.test_3_class_only_send_2pvals")
     
@@ -77,6 +85,7 @@ class TestPValuesPlot(unittest.TestCase):
                     cm = c,
                     alphas= [.9,.5],
                     markers=m,
+                    linewidths=.5,
                     fontargs={'fontsize':'medium'})
         freq_fig.tight_layout()
         _save_clf(freq_fig,"TestPValuesPlot.hER_all_freq")
@@ -93,6 +102,7 @@ class TestPValuesPlot(unittest.TestCase):
                     # alphas = [.8,.75], # default
                     cm = c,
                     markers=m,
+                    #linewidths=1,
                     # edgecolors='face',
                     sizes = mpl.rcParams['lines.markersize']**2,
                     lw=1.5,

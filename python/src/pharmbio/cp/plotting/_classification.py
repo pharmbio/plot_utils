@@ -33,7 +33,7 @@ __default_incorr_multi_label_color = __default_color_map.pop(2)
 ####################################
 
 
-def __plot_freq(ax,y,ps,s,c,m,alphas,unique_labels,cols,str_labels,add_legend=False,**kwargs):
+def __plot_freq(ax,y,ps,s,c,m,alphas,unique_labels,cols,str_labels,added_labels,**kwargs):
     '''Helper function for `plot_pvalues`, used for plotting using order="freq" '''
     # Count them
     counts = np.zeros(len(unique_labels))
@@ -42,19 +42,22 @@ def __plot_freq(ax,y,ps,s,c,m,alphas,unique_labels,cols,str_labels,add_legend=Fa
     l_order = np.argsort(- counts)
 
     for l in unique_labels[l_order]:
-
-        if add_legend:
-            kw = kwargs.copy()
-            kw['label']=str_labels[l]
-        else:
-            kw = kwargs
         l_mask = y==l
-        ax.scatter(x = ps[l_mask,cols[0]],
-            y = ps[l_mask,cols[1]],
-            s = s[l_mask], 
-            c = c[l_mask], 
-            marker = m[l],
-            **__get_kwargs(kw,alphas,l))
+        if l_mask.sum()>0:
+            if l not in added_labels:
+                kw = kwargs.copy()
+                kw['label']=str_labels[l]
+                added_labels.append(l)
+            else:
+                kw = kwargs
+            l_mask = y==l
+            ax.scatter(x = ps[l_mask,cols[0]],
+                y = ps[l_mask,cols[1]],
+                s = s[l_mask], 
+                c = c[l_mask], 
+                marker = m[l],
+                **__get_kwargs(kw,alphas,l))
+    return added_labels
 
 def __get_kwargs(kwargs, alphas, cls):
     if alphas is None:
@@ -101,7 +104,7 @@ def plot_pvalues(y_true,
     p_values : 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
 
-    cols : list of int
+    cols : list of int, length 2
         Colums in the `p_values` matrix to plot
 
     labels : list of str, optional
@@ -267,81 +270,70 @@ def plot_pvalues(y_true,
     # --------------------
     # Do the plotting
     # --------------------
+
+    added_labs = []
+
     if order in [None,'none','freq']:
 
         # If sides of chart should be treated independently
         if split_chart:
             # Create a mask for upper-left
             ul_mask = p_values[:,cols[0]] < p_values[:,cols[1]]
-            __plot_freq(ax,y_true[ul_mask],p_values[ul_mask],plt_sizes[ul_mask],
+            added_labs = __plot_freq(ax,y_true[ul_mask],p_values[ul_mask],plt_sizes[ul_mask],
                 plt_c[ul_mask],plt_markers,alphas,unique_labels,
-                cols,labels,add_legend=False,**kwargs)
+                cols,labels,added_labels=added_labs,**kwargs)
             # Do lower-right 
-            __plot_freq(ax,y_true[~ul_mask],p_values[~ul_mask],plt_sizes[~ul_mask],
+            added_labs = __plot_freq(ax,y_true[~ul_mask],p_values[~ul_mask],plt_sizes[~ul_mask],
                 plt_c[~ul_mask],plt_markers,alphas,unique_labels,
-                cols,labels,add_legend=False,**kwargs)
+                cols,labels,added_labels=added_labs,**kwargs)
         else:
             # Here look at overall frequency of each class
-            __plot_freq(ax,y_true,p_values,plt_sizes,
+            added_labs = __plot_freq(ax,y_true,p_values,plt_sizes,
                 plt_c,plt_markers,alphas,unique_labels,
-                cols,labels,add_legend=False,**kwargs)
+                cols,labels,added_labels=[],**kwargs)
 
     elif ('class' in order or 'label' in order) and 'rev' in order:
         # Use the reerse order of the labels 
         rev = np.flip(unique_labels)
+        
         for lab in rev:
             l_mask = y_true == lab
-
-            ax.scatter(
-                p_values[l_mask, cols[0]], 
-                p_values[l_mask, cols[1]], 
-                s = plt_sizes[l_mask], 
-                c = plt_c[l_mask], 
-                marker = plt_markers[lab], 
-                #label = labels[lab],
-                **__get_kwargs(kwargs, alphas,lab))
+            if l_mask.sum()>0:
+                added_labs.append(lab)
+                ax.scatter(
+                    p_values[l_mask, cols[0]], 
+                    p_values[l_mask, cols[1]], 
+                    s = plt_sizes[l_mask], 
+                    c = plt_c[l_mask], 
+                    marker = plt_markers[lab], 
+                    label = labels[lab],
+                    **__get_kwargs(kwargs, alphas,lab))
 
     elif order in ['class','label']:
         # Use the order of the labels 
         for lab in unique_labels:
             l_mask = y_true == lab
-            
-            ax.scatter(
-                p_values[l_mask, cols[0]], 
-                p_values[l_mask, cols[1]], 
-                s = plt_sizes[l_mask], 
-                c = plt_c[l_mask], 
-                marker = plt_markers[lab],
-                #label = labels[lab],
-                **__get_kwargs(kwargs, alphas,lab))
+            if l_mask.sum()>0:
+                added_labs.append(lab)
+                ax.scatter(
+                    p_values[l_mask, cols[0]], 
+                    p_values[l_mask, cols[1]], 
+                    s = plt_sizes[l_mask], 
+                    c = plt_c[l_mask], 
+                    marker = plt_markers[lab],
+                    label = labels[lab],
+                    **__get_kwargs(kwargs, alphas,lab))
     else:
         raise ValueError('parameter order not any of the allowed values: ' + str(order))
     
-    # Manually add all legends in correct order
-    legend_elmnts = []
-    for lab in unique_labels:
-        l_mask = y_true == lab
-        if l_mask.sum() <= 0:
-            # Skip label in case not in the plot
-            continue
-        legend_elmnts.append(Line2D([0],[0],
-            color=plt_c[l_mask][0], #'w', #plt_c[l_mask][0],
-            markerfacecolor = plt_c[l_mask][0],
-            #markersize = np.mean(plt_sizes[l_mask]),
-            marker=plt_markers[lab],
-            #alpha=__get_kwargs({},alphas,lab)['alpha'],
-            #lw=0, # Not showing any line, only the marker
-            linestyle='none',
-            label=labels[lab],
-            **__get_kwargs(kwargs,alphas,lab)))
-
-    ax.legend(handles = legend_elmnts).set_visible(add_legend)
+    # Manually correct the order of labels in the legend, and display it depending on input add_legend
+    sort_order = np.argsort(added_labs)
+    h,l = ax.get_legend_handles_labels()
+    ax.legend(np.array(h)[sort_order],np.array(l)[sort_order]).set_visible(add_legend)
+    
     # --------------------
     # End of plotting 
     # --------------------
-
-    #if add_legend:
-    #    ax.legend(loc='upper right',**{'fontsize':'large',**fontargs})
     
     # Set some labels and title
     if y_label is not None:
