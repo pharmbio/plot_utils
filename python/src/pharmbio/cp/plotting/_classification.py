@@ -2,6 +2,7 @@
 """
 import math
 import matplotlib as mpl
+from matplotlib.lines import Line2D
 import warnings
 import numpy as np
 from sklearn.utils import check_consistent_length
@@ -57,7 +58,7 @@ def __plot_freq(ax,y,ps,s,c,m,alphas,unique_labels,cols,str_labels,add_legend=Fa
 
 def __get_kwargs(kwargs, alphas, cls):
     if alphas is None:
-        return kwargs
+        return {'alpha':None, **kwargs}
     elif isinstance(alphas, float):
         return {'alpha':alphas, **kwargs}
     elif isinstance(alphas,(list,tuple)):
@@ -266,7 +267,7 @@ def plot_pvalues(y_true,
     # --------------------
     # Do the plotting
     # --------------------
-    if order is None or (order == 'none') or (order == 'freq'):
+    if order in [None,'none','freq']:
 
         # If sides of chart should be treated independently
         if split_chart:
@@ -278,12 +279,12 @@ def plot_pvalues(y_true,
             # Do lower-right 
             __plot_freq(ax,y_true[~ul_mask],p_values[~ul_mask],plt_sizes[~ul_mask],
                 plt_c[~ul_mask],plt_markers,alphas,unique_labels,
-                cols,labels,add_legend=True,**kwargs)
+                cols,labels,add_legend=False,**kwargs)
         else:
             # Here look at overall frequency of each class
-            __plot_freq(ax,y_true,p_values,
+            __plot_freq(ax,y_true,p_values,plt_sizes,
                 plt_c,plt_markers,alphas,unique_labels,
-                cols,labels,add_legend=True,**kwargs)
+                cols,labels,add_legend=False,**kwargs)
 
     elif ('class' in order or 'label' in order) and 'rev' in order:
         # Use the reerse order of the labels 
@@ -297,10 +298,10 @@ def plot_pvalues(y_true,
                 s = plt_sizes[l_mask], 
                 c = plt_c[l_mask], 
                 marker = plt_markers[lab], 
-                label = labels[lab],
+                #label = labels[lab],
                 **__get_kwargs(kwargs, alphas,lab))
 
-    elif order == 'class' or order == 'label':
+    elif order in ['class','label']:
         # Use the order of the labels 
         for lab in unique_labels:
             l_mask = y_true == lab
@@ -311,16 +312,36 @@ def plot_pvalues(y_true,
                 s = plt_sizes[l_mask], 
                 c = plt_c[l_mask], 
                 marker = plt_markers[lab],
-                label = labels[lab],
+                #label = labels[lab],
                 **__get_kwargs(kwargs, alphas,lab))
     else:
         raise ValueError('parameter order not any of the allowed values: ' + str(order))
+    
+    # Manually add all legends in correct order
+    legend_elmnts = []
+    for lab in unique_labels:
+        l_mask = y_true == lab
+        if l_mask.sum() <= 0:
+            # Skip label in case not in the plot
+            continue
+        legend_elmnts.append(Line2D([0],[0],
+            color=plt_c[l_mask][0], #'w', #plt_c[l_mask][0],
+            markerfacecolor = plt_c[l_mask][0],
+            #markersize = np.mean(plt_sizes[l_mask]),
+            marker=plt_markers[lab],
+            #alpha=__get_kwargs({},alphas,lab)['alpha'],
+            #lw=0, # Not showing any line, only the marker
+            linestyle='none',
+            label=labels[lab],
+            **__get_kwargs(kwargs,alphas,lab)))
+
+    ax.legend(handles = legend_elmnts).set_visible(add_legend)
     # --------------------
     # End of plotting 
     # --------------------
 
-    if add_legend:
-        ax.legend(loc='upper right',**{'fontsize':'large',**fontargs})
+    #if add_legend:
+    #    ax.legend(loc='upper right',**{'fontsize':'large',**fontargs})
     
     # Set some labels and title
     if y_label is not None:
