@@ -258,7 +258,7 @@ def plot_pvalues(y_true,
     else:
         # One color per class
         if isinstance(colors[0],(str,np.str_)):
-            plt_c = np.empty(n_ex, dtype=np.str_)
+            plt_c = np.empty(n_ex, dtype=np.object_)
         elif isinstance(colors[0], (tuple,list)):
             # RGB or RGBA color tuples
             plt_c = np.empty((n_ex,len(colors[0])),dtype=np.float64)
