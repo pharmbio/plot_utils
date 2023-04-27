@@ -4,6 +4,16 @@ from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
 
+__sklearn_1_2_0_or_later = False
+
+try:
+    from packaging.version import Version, parse as parse_version
+    import sklearn
+    __sklearn_1_2_0_or_later = parse_version(sklearn.__version__)>= Version('1.2.0')
+except ImportError as e:
+    pass 
+
+
 # def get_sign_vals(sign_vals, sign_min=0,sign_max=1,sign_step=0.01):
 #     """Generate a numpy array of significance values
     
@@ -43,7 +53,7 @@ def get_n_classes(y_true, p_vals):
     The number could either be the number of columns in the p-value matrix. 
     Or the user could have only sent a slice of the p-values/added more labels
     in the `y_true` due to wanting to plot them in a different color. The value 
-    of `n_class` is the maxium number of these, so trying to access the `n_class'th - 1`
+    of `n_class` is the maximum number of these, so trying to access the `n_class'th - 1`
     column the p-value matrix might be out of range!
     
     """
@@ -160,7 +170,7 @@ def to_numpy1D_onehot(input, param_name, return_encoder=False, dtype=bool, label
         matrix : numpy 2D of bool
             The one-hot-encoded version of y_true
         array : numpy 1D
-            The categories, corresponding to the indicies of `matrix`
+            The categories, corresponding to the indices of `matrix`
     
     (matrix, array, sklearn.preprocessing.OneHotEncoder)
         When `return_encoder` is set to True.
@@ -168,7 +178,11 @@ def to_numpy1D_onehot(input, param_name, return_encoder=False, dtype=bool, label
     one_dim = to_numpy1D(input,param_name,return_copy=False).reshape(-1,1)
     if labels is None:
         labels = np.unique(one_dim)
-    enc = OneHotEncoder(sparse=False,dtype=dtype,categories=[labels])
+    
+    if __sklearn_1_2_0_or_later:
+        enc = OneHotEncoder(sparse_output=False,dtype=dtype,categories=[labels])
+    else:
+        enc = OneHotEncoder(sparse=False,dtype=dtype,categories=[labels])
     one_hot = enc.fit_transform(one_dim)
 
     if return_encoder:
