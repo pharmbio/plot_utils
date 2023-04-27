@@ -366,6 +366,7 @@ def plot_calibration_curve(y_true,
     plot_all_labels=True,
     title=None,
     tight_layout=True,
+    plot_expected = True,
     **kwargs):
     
     """**Classification** - Create a calibration plot
@@ -415,6 +416,9 @@ def plot_calibration_curve(y_true,
 
     tight_layout : bool, optional
         Set `tight_layout` on the matplotlib Figure object
+    
+    plot_expected : bool, optional
+        Plot the diagonal, representing the expected error/accuracy (default `True`)
 
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
@@ -435,7 +439,9 @@ def plot_calibration_curve(y_true,
         raise ValueError('Must have at least 2 significance values to plot a calibration curve')
     if not isinstance(sign_vals,np.ndarray):
         sign_vals = np.array(sign_vals)
-    
+    if not isinstance(plot_expected, bool):
+        raise ValueError('plot_expected can only be a True or False')
+
     # Verify and convert to correct format
     y_true = to_numpy1D_int(y_true, 'y_true')
     p_values = to_numpy2D(p_values, 'p_values')
@@ -463,13 +469,13 @@ def plot_calibration_curve(y_true,
     (x_lab,y_lab) = add_calib_curve(ax,
         sign_vals,
         overall_frac,
-        legend='Overall',
+        label='Overall',
         zorder=100,
         color=overall_color,
         flip_x=flip_x,
         flip_y=flip_y,
         set_chart_size=False,
-        plot_expected=True,
+        plot_expected=plot_expected,
         **kwargs)
 
     if plot_all_labels:
@@ -478,7 +484,7 @@ def plot_calibration_curve(y_true,
             add_calib_curve(ax,
                 sign_vals,
                 cls_frac[:,i],
-                legend=labels[i],
+                label=labels[i],
                 color=colors[i],
                 set_chart_size=False,
                 plot_expected=False,

@@ -5,7 +5,7 @@ from ._utils import _set_chart_size
 def add_calib_curve(ax, 
     sign_vals,
     error_rates,
-    legend = None,
+    label = None,
     color = 'k',
     flip_x = False,
     flip_y = False,
@@ -26,8 +26,8 @@ def add_calib_curve(ax,
 
     error_rates : 1d ndarray
 
-    legend : str or None
-        An optional legend to add to the plotted values
+    label : str or None
+        An optional label to add to the plotted values
     
     color : str or matplotlib recognized color-input
     
@@ -87,7 +87,7 @@ def add_calib_curve(ax,
     # Plot the values
     if color is not None:
         ax.plot(xs, ys, 
-            label=(legend if legend is not None else y_label), 
+            label=(label if label is not None else y_label), 
             color=color,
             **kwargs)
 

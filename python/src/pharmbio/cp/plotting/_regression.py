@@ -22,6 +22,8 @@ def plot_calibration_curve_reg(error_rates,
     flip_y = False,
     title = None,
     tight_layout = True,
+    label = None,
+    plot_expected = True,
     **kwargs):
     """**Regression** - Plot a calibration curve given pre-calculated error-rates
 
@@ -53,6 +55,12 @@ def plot_calibration_curve_reg(error_rates,
 
     tight_layout : bool, optional
         Set `tight_layout` on the matplotlib Figure object
+    
+    label : str, or None
+        An optional label to add to the error/accuracy curve, to be used in a figure legend (default None)
+    
+    plot_expected : bool, optional
+        Plot the diagonal, representing the expected error/accuracy (default `True`)
 
     **kwargs : dict, optional
         Keyword arguments, passed to matplotlib
@@ -67,6 +75,10 @@ def plot_calibration_curve_reg(error_rates,
     metrics.frac_error_reg
         Calculates error-rates for a regression dataset
     """
+    if not isinstance(plot_expected, bool):
+        raise ValueError('plot_expected can only be a True or False')
+    if label is not None and not isinstance(label, str):
+        raise ValueError('label argument must be str or None')
     check_consistent_length((sign_vals,error_rates))
     error_fig, ax = get_fig_and_axis(ax, figsize)
     ax.set_aspect('equal','box')
@@ -75,11 +87,12 @@ def plot_calibration_curve_reg(error_rates,
         sign_vals,
         error_rates,
         color=color,
-        plot_expected=True,
+        plot_expected=plot_expected,
         chart_padding=chart_padding,
         set_chart_size=True,
         flip_x=flip_x,
         flip_y=flip_y,
+        label=label,
         **kwargs)
     
     # Print some labels and title if appropriate
