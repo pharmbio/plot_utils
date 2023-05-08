@@ -26,7 +26,7 @@ cm_3_class_015 = metrics.confusion_matrix( true_labels_3_class, p_vals_3_class, 
 # print(type(true_labels_3class))
 
 # hER predictions
-er_data = np.genfromtxt('resources/er.p-values.csv', delimiter=',', skip_header=0)
+er_data = np.genfromtxt('resources/er.p-values.csv', delimiter=',', skip_header=1)
 er_labels = er_data[:,0].astype(np.int16)
 er_pvals = er_data[:,1:]
 
