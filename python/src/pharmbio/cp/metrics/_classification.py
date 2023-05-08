@@ -580,6 +580,9 @@ def n_criterion(p_values, sign=_default_significance):
     p_values : array, 2D numpy array or DataFrame
         The predicted p-values, first column for the class 0, second for class 1, ..
     
+    sign : float, in range [0..1], default 0.8
+        The significance level
+    
     Returns
     -------
     n_score : float
@@ -609,7 +612,7 @@ def u_criterion(p_values):
 def f_criteria(p_values):
     """**Classification** - F criterion 
     
-    Average fuzziness. Average of the sum of all p-values appart from the largest one.
+    Average fuzziness. Average of the sum of all p-values apart from the largest one.
     Smaller values are preferable.
 
     Parameters
