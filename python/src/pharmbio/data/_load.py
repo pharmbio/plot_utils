@@ -2,7 +2,6 @@
 """
 
 import numpy as np
-from numpy.lib.arraysetops import isin
 import pandas as pd
 import re
 
@@ -36,7 +35,7 @@ def load_regression(f,
         Regex used for finding columns of the lower and upper interval limits. Must match the column headers
     
     specifies_significance : bool or None, default None
-        If the numbers in the headers are significance level (True) or confidence (False). If None, the first column-header found by `lower_regex` will be used to check for occurrances of 'significance' or 'conf' to try to infer what is used
+        If the numbers in the headers are significance level (True) or confidence (False). If None, the first column-header found by `lower_regex` will be used to check for occurrences of 'significance' or 'conf' to try to infer what is used
 
     Returns
     -------
@@ -48,7 +47,7 @@ def load_regression(f,
     if not isinstance(upper_regex,re.Pattern):
         upper_regex = re.compile(upper_regex,re.IGNORECASE)
     num_pattern = re.compile('\d*\.\d*')
-    y_col_lc = y_true_col.lower()
+    y_col_lc = None if y_true_col is None else y_true_col.lower()
     y_true_ind = None
     
     df = pd.read_csv(f,sep=sep)
@@ -60,7 +59,7 @@ def load_regression(f,
         elif upper_regex.match(c) is not None:
             upp_ind.append(i)
             sign_upp.append(float(num_pattern.findall(c)[0]))
-        elif c.lower() == y_col_lc:
+        elif y_col_lc is not None and c.lower() == y_col_lc:
             y_true_ind = i
 
     # Some validation
@@ -97,10 +96,10 @@ def convert_regression(data,
     
     y_true_index : int or None
         Column index that the ground truth values are, or None if no 
-        y values should be generated. Utput `y` will then be None
+        y values should be generated. Output `y` will then be None
     
     min_index, max_index : list or array of int
-        Column indicies for min and max values for prediction intervals
+        Column indices for min and max values for prediction intervals
     
     Returns
     -------
