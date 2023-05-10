@@ -8,3 +8,6 @@ from ._classification import *
 
 # all 'public' regression functions - TODO
 from ._regression import *
+
+# From the common stuff
+from ._common import plot_computed_calibration

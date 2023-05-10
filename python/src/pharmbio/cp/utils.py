@@ -14,39 +14,6 @@ except ImportError as e:
     pass 
 
 
-# def get_sign_vals(sign_vals, sign_min=0,sign_max=1,sign_step=0.01):
-#     """Generate a numpy array of significance values
-    
-#     Returns
-#     -------
-#     list of float
-#     """
-#     # prefer an explict list of values
-#     if sign_vals is not None:
-#         if not isinstance(sign_vals, list):
-#             raise TypeError('parameter sign_vals must be a list of floats')
-#         if len(sign_vals) < 2:
-#             raise ValueError('parameter sign_vals must be a list with more than one value')
-#         # Validate the given significance values
-#         sign_vals = sorted(sign_vals)
-#         for sign in sign_vals:
-#             if sign > 1 or sign < 0:
-#                 raise ValueError('Significance value must be in the range [0,1]')
-#     else:
-#         # Do some validation
-#         if sign_min<0:
-#             raise ValueError('sign_min must be >= 0')
-#         if sign_max > 1:
-#             raise ValueError('sign_min must be <= 1')
-#         if sign_max < sign_min:
-#             raise ValueError('sign_max < sign_min not allowed')
-#         if sign_step < 1e-4 or sign_step > .5:
-#             raise ValueError('sign_step must be in the range [1e-4, 0.5]')
-#         sign_vals = list(np.arange(sign_min,sign_max,sign_step))
-#         if sign_vals[-1] < sign_max:
-#             sign_vals.append(sign_max)
-#     return np.array(sign_vals)
-
 def get_n_classes(y_true, p_vals):
     """Helper method for finding the maximum number of classes
 
@@ -112,7 +79,7 @@ def validate_sign(sign):
     elif sign < 0 or sign >1:
         raise ValueError('parameter sign must be in the range [0,1]')
 
-def to_numpy2D(input, param_name, min_num_cols=2, return_copy=True):
+def to_numpy2D(input, param_name, min_num_cols=2, return_copy=True, unravel=False):
     """ Converts python list-based matrices and Pandas DataFrames into numpy 2D arrays
 
     If input is already a numpy array, it will be copied in case `return_copy` is True
@@ -127,6 +94,9 @@ def to_numpy2D(input, param_name, min_num_cols=2, return_copy=True):
         matrix = input.to_numpy()
     elif isinstance(input, np.ndarray):
         if input.ndim != 2:
+            if input.ndim == 1 and unravel:
+                # if we are allowed to unravel (i.e. add an additional dim to the ndarray) - we create one
+                return input.reshape((len(input),1))
             raise ValueError('parameter {} must be a 2D matrix, was a ndarray of shape {}'.format(param_name,input.shape))
         matrix = input.copy() if return_copy else input 
     else:

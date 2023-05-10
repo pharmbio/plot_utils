@@ -1,5 +1,6 @@
 """CP Classification plots
 """
+
 import math
 import matplotlib as mpl
 from matplotlib.lines import Line2D
@@ -12,20 +13,20 @@ from ..utils import get_n_classes,get_str_labels,to_numpy2D,to_numpy1D_int, vali
 
 # The following import sets seaborn etc if available 
 from ._utils import get_fig_and_axis, cm_as_list, _using_seaborn, _set_title, _set_label_if_not_set,_set_chart_size
-from ._common import add_calib_curve
+from ._common import add_calib_curve, _default_color_map
 
 from ..metrics import frac_errors, frac_single_label_preds
 from ..metrics import frac_multi_label_preds
 
 
 # Set some defaults that will be used amongst the plotting functions
-__default_color_map = list(mpl.rcParams['axes.prop_cycle'].by_key()['color'])
-__default_single_label_color = __default_color_map.pop(2) # green
-__default_multi_label_color = __default_color_map.pop(2) # red
+#__default_color_map = list(mpl.rcParams['axes.prop_cycle'].by_key()['color'])
+__default_single_label_color = _default_color_map.pop(2) # green
+__default_multi_label_color = _default_color_map.pop(2) # red
 __default_empty_prediction_color = "gainsboro"
 
-__default_incorr_single_label_color = __default_color_map.pop(2) 
-__default_incorr_multi_label_color = __default_color_map.pop(2)
+__default_incorr_single_label_color = _default_color_map.pop(2) 
+__default_incorr_multi_label_color = _default_color_map.pop(2)
 
 
 ####################################
@@ -91,7 +92,7 @@ def plot_pvalues(y_true,
     tight_layout = True,
     fontargs = None,
     **kwargs):
-    """Plot p-values agains each other
+    """Plot p-values against each other
 
     Plot p-values against each other, switch the axes by setting the `cols` parameter
     and handle multi-class predictions by deciding which p-values should be plotted.
@@ -105,7 +106,7 @@ def plot_pvalues(y_true,
         The predicted p-values, first column for the class 0, second for class 1, ..
 
     cols : list of int, length 2
-        Colums in the `p_values` matrix to plot
+        Columns in the `p_values` matrix to plot
 
     labels : list of str, optional
         Textual labels for the classes, will affect the x- and y-labels and the legend
@@ -208,7 +209,7 @@ def plot_pvalues(y_true,
         raise TypeError('parameter order must be None or str, was {}'.format(type(order)))
 
     # Set the color-map (list)
-    colors = cm_as_list(cm, __default_color_map)
+    colors = cm_as_list(cm, _default_color_map)
 
     # Verify the labels
     n_class = get_n_classes(y_true, p_values)
@@ -293,7 +294,7 @@ def plot_pvalues(y_true,
                 cols,labels,added_labels=[],**kwargs)
 
     elif ('class' in order or 'label' in order) and 'rev' in order:
-        # Use the reerse order of the labels 
+        # Use the reverse order of the labels 
         rev = np.flip(unique_labels)
         
         for lab in rev:
@@ -479,7 +480,7 @@ def plot_calibration_curve(y_true,
         **kwargs)
 
     if plot_all_labels:
-        colors = cm_as_list(cm, __default_color_map)
+        colors = cm_as_list(cm, _default_color_map)
         for i in range(cls_frac.shape[1]):
             add_calib_curve(ax,
                 sign_vals,
@@ -549,7 +550,7 @@ def plot_label_distribution(y_true,
         (if `display_incorrects`=True a list of at least 5 is required, otherwise 3 is sufficient)
 
     display_incorrects : boolean, optional
-        Plot the incorrect predictions intead of only empty/single/multi-label predictions (default True)
+        Plot the incorrect predictions instead of only empty/single/multi-label predictions (default True)
 
     mark_best : boolean
         Mark the best significance value with a line and textbox (default True)
@@ -609,7 +610,7 @@ def plot_label_distribution(y_true,
         if s_l > highest_single_ratio:
             highest_single_ratio = s_l
             best_sign = s
-        # The empty labels are the remaing predictions
+        # The empty labels are the remaining predictions
         empty_label.append(1 - sum_labels)
     
     # Convert all to numpy arrays
@@ -777,7 +778,7 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
         n_rows = confusion_matrix.shape[0]
         colors = []
         for c in range(n_class):
-            c_color = [__default_color_map[c]]*n_rows
+            c_color = [_default_color_map[c]]*n_rows
             colors.extend(c_color)
         colors = np.array(colors,dtype=object)
     elif color_scheme.lower() == 'full':
