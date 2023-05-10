@@ -8,6 +8,21 @@ from ..utils import to_numpy2D, validate_sign, to_numpy1D
 
 _default_color_map = list(mpl.rcParams['axes.prop_cycle'].by_key()['color'])
 
+def update_plot_settings(theme_style = 'ticks', context = 'notebook', font_scale = 1):
+    '''
+    Update the global plot-settings, requires having seaborn available.
+
+    This is simply a convenience wrapper of the functions `seaborn.set_context` and `seaborn.set_theme`. If seaborn is not available, this function 
+    will not make any alterations 
+    '''
+    try:
+        import seaborn as sns
+        sns.set_context(context=context)
+        custom_params = {"axes.spines.right": False, "axes.spines.top": False}
+        sns.set_theme(style=theme_style, rc=custom_params, font_scale=font_scale)
+    except ImportError as e:
+        pass
+
 def add_calib_curve(ax, 
     sign_vals,
     error_rates,
