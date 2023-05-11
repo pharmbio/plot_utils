@@ -12,121 +12,31 @@ from ._utils import get_fig_and_axis, _set_chart_size, _plot_vline,_set_label_if
 from ._common import add_calib_curve
 
 
-def plot_calibration_curve_reg(error_rates,
-    sign_vals,
-    color = 'blue',
-    ax = None,
-    figsize = (10,8),
-    chart_padding = 0.025,
-    flip_x = False,
-    flip_y = False,
-    title = None,
-    tight_layout = True,
-    label = None,
-    plot_expected = True,
-    **kwargs):
-    """**Regression** - Plot a calibration curve given pre-calculated error-rates
-
-    Parameters
-    ----------
-    error_rates : 1D ndarray
-        Pre-calculated error-rates from `metrics.frac_error_reg` 
-    
-    sign_vals : list or array like
-        The significance levels that each of the 3rd dimension corresponds to
-    
-    color : str or argument that matplotlib accepts, default 'blue'
-        The color of the plotted graph
-    
-    ax : matplotlib Axes, optional
-        An existing matplotlib Axes to plot in (default None)
-
-    figsize : float or (float, float), optional
-        Figure size to generate, ignored if `ax` is given
-    
-    flip_x : bool, default False
-        If the x-axes should display significance level (`False`) or confidence (`True`)
-    
-    flip_y : bool, default False
-        If the y-axes should display error-rate (`False`) or accuracy (`True`)
-    
-    title : str, optional
-        Optional title that will be printed in 'x-large' font size (default None)
-
-    tight_layout : bool, optional
-        Set `tight_layout` on the matplotlib Figure object
-    
-    label : str, or None
-        An optional label to add to the error/accuracy curve, to be used in a figure legend (default None)
-    
-    plot_expected : bool, optional
-        Plot the diagonal, representing the expected error/accuracy (default `True`)
-
-    **kwargs : dict, optional
-        Keyword arguments, passed to matplotlib
-
-    Returns
-    -------
-    Figure
-        matplotlib.figure.Figure object
-
-    See Also
-    --------
-    metrics.frac_error_reg
-        Calculates error-rates for a regression dataset
-    """
-    if not isinstance(plot_expected, bool):
-        raise ValueError('plot_expected can only be a True or False')
-    if label is not None and not isinstance(label, str):
-        raise ValueError('label argument must be str or None')
-    check_consistent_length((sign_vals,error_rates))
-    error_fig, ax = get_fig_and_axis(ax, figsize)
-    ax.set_aspect('equal','box')
-
-    (x_lab, y_lab) = add_calib_curve(ax,
-        sign_vals,
-        error_rates,
-        color=color,
-        plot_expected=plot_expected,
-        chart_padding=chart_padding,
-        set_chart_size=True,
-        flip_x=flip_x,
-        flip_y=flip_y,
-        label=label,
-        **kwargs)
-    
-    # Print some labels and title if appropriate
-    _set_label_if_not_set(ax,x_lab,True)
-    _set_label_if_not_set(ax,y_lab,False)
-    _set_title(ax,title)
-
-    if tight_layout:
-        error_fig.tight_layout()
-    
-    return error_fig
-
-
-
-def plot_pred_widths(pred_widths,
-    sign_vals,
-    color = 'blue',
-    flip_x = False,
-    ax = None,
-    figsize = (10,8),
-    chart_padding = 0.025,
-    title = None,
-    y_label = 'Median Prediction interval width',
-    tight_layout = True,
-    **kwargs):
+def plot_pred_widths(sign_vals,
+                     pred_widths,
+                     pred_widths_sd = None,
+                     color = 'blue',
+                     sd_alpha = 0.3,
+                     flip_x = False,
+                     ax = None,
+                     figsize = (10,8),
+                     chart_padding = 0.025,
+                     title = None,
+                     y_label = 'Median Prediction interval width',
+                     tight_layout = True,
+                     **kwargs):
     """**Regression** - Plot prediction widths at different significance levels
     
     Parameters
     ----------
+    sign_vals : array like
+        List of significance levels for each of the `pred_widths`
+    
     pred_widths : array like
         List or 1D array of prediction widths, typically generated from `metrics.pred_width`
     
-    sign_vals : array like
-        List of significance levels for each of the `pred_widths``
+    pred_widths_sd : array like, optional
+        List or 1D array of standard deviations for the prediction widths, to depict the width+/-std area
     
     color : str or matplotlib recognized color-input
         Color of the plotted curve
@@ -166,7 +76,10 @@ def plot_pred_widths(pred_widths,
         Calculates median or mean prediction interval widths
     """
     
-    check_consistent_length((sign_vals, pred_widths))
+    check_consistent_length(sign_vals, pred_widths)
+    if pred_widths_sd is not None:
+        check_consistent_length(sign_vals, pred_widths_sd)
+
     validate_sign(sign_vals)
     fig, ax = get_fig_and_axis(ax, figsize)
 
@@ -183,6 +96,8 @@ def plot_pred_widths(pred_widths,
         pred_widths,
         chart_padding)
 
+    if pred_widths_sd is not None:
+        ax.fill_between(xs, pred_widths-pred_widths_sd, pred_widths+pred_widths_sd, interpolate=True, alpha = sd_alpha)
     ax.plot(xs, pred_widths, color=color,label=y_label, **kwargs)
 
     # Print some labels and title if appropriate
@@ -254,19 +169,19 @@ def plot_pred_intervals(y_true,
         The shape of the true values
     
     correct_alpha, incorrect_alpha : float, default 0.75
-        The alpha (transparancy) of the true values
+        The alpha (transparency) of the true values
     
     correct_ci, incorrect_ci : str of matplotlib recognized color-input
         Color of the confidence/prediction intervals
     
     correct_ci_alpha, incorrect_ci_alpha : float
-        The alpha (transparancy) of the confidence/prediction intervals
+        The alpha (transparency) of the confidence/prediction intervals
     
     correct_label,incorrect_label : str
         The label, if any, that should be added to the correct/incorrect true examples, which will end up in the plot if adding a legend in the figure
     
     line_cap : {None, 1, 2 or str}, default 1
-        The end of the confidence/prediction intervals, 1:'_', 2:6 / 7 out of the accpted markers list: https://matplotlib.org/stable/api/markers_api.html
+        The end of the confidence/prediction intervals, 1:'_', 2:6 / 7 out of the accepted markers list: https://matplotlib.org/stable/api/markers_api.html
     
     title : str, default None
         A title to add to the figure (default None)

@@ -353,7 +353,7 @@ def plot_pvalues(y_true,
     return fig
 
 
-def plot_calibration_curve(y_true,
+def plot_calibration_clf(y_true,
     p_values,
     labels = None,
     ax = None,
@@ -507,19 +507,261 @@ def plot_calibration_curve(y_true,
     
     return error_fig
 
-def plot_label_distribution(y_true,
-    p_values,
-    ax=None,
-    figsize=(10,8),
-    title=None,
-    x_label = 'Significance',
-    y_label = 'Label distribution',
-    sign_vals=np.arange(0,1,0.01),
-    cm=None,
-    display_incorrects=False,
-    mark_best=True,
-    tight_layout=True,
-    **kwargs):
+
+##### Generic label-distribution function - to call the specific-functions based on input
+
+def plot_label_distribution(
+        sign_vals = None,
+        conf_vals = None,
+        # Raw inputs
+        y_true = None,
+        p_values = None,
+        # Computed inputs
+        prop_single = None,
+        prop_multi = None,
+        prop_empty = None,
+        # Remaining parameters
+        ax=None,
+        figsize=(10,8),
+        title=None,
+        x_label = None,
+        y_label = 'Label distribution',
+        cm=None,
+        display_incorrect=False,
+        mark_best=True,
+        tight_layout=True,
+        **kwargs):
+    """**Classification** - Create a stacked plot with label ratios
+
+    Note that there are *two ways* to call this function, either using already computed values which requires:
+    (`sign_vals` | `conf_vals`), `prop_single`, `prop_multi`, `prop_empty` 
+    _OR_
+    `y_true` and `p_values`  and the optional `sign_vals` to pick which ones to compute the ratios based on
+    
+    Parameters
+    ----------
+    sign_vals : array like, optional
+        Significance levels used to compute `prop_xx` arguments, or which should be applied when computing them
+        based in raw input values.
+
+    conf_vals : array like, optional
+        Confidence levels used to compute `prop_xx` arguments, or which should be applied when computing them
+        based in raw input values.
+
+    y_true : array like, optional
+        The true classes/labels using values 0, 1, etc for each class
+
+    p_values : 2D numpy array, optional
+        The predicted p-values, first column for the class 0, second for class 1, ..
+    
+    prop_single, prop_multi, prop_empty : array like, optional
+        Ratios/proportions of single-label, multi-label and empty-label predictions. Only the `prop_single` argument is
+        required in case using pre-computed value. Further requires that either `sign_vals` OR `conf_values` are given
+
+    ax : matplotlib Axes, optional
+        An existing matplotlib Axes to plot in (default None)
+
+    figsize : float or (float, float), optional
+        Figure size to generate, ignored if `ax` is given
+
+    title : str, optional
+        A title to add to the figure (default None)
+    
+    x_label,y_label : str, optional
+        Labels for the x and y axes. Defaults are given
+
+    cm : list of colors or ListedColorMap, optional
+        Colors to use, given in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  
+        (if `display_incorrect`=True a list of at least 5 is required, otherwise 3 is sufficient)
+
+    display_incorrect : boolean, optional
+        Plot the incorrect predictions instead of only empty/single/multi-label predictions (default True)
+
+    mark_best : boolean
+        Mark the best significance value with a line and textbox (default True)
+    
+    tight_layout : bool, optional
+        Set `tight_layout` on the matplotlib Figure object
+
+    **kwargs : dict, optional
+        Keyword arguments, passed to matplotlib
+    
+    Returns
+    -------
+    fig : Figure
+        matplotlib.figure.Figure object
+    """
+    
+    if prop_single is not None:
+        if display_incorrect:
+            raise ValueError('`display_incorrect` cannot be given for pre-computed values')
+        # Computed values given
+        # param_dict = {}
+        return __plot_label_distro_computed(sign_vals=sign_vals, conf_vals=conf_vals,
+                                            prop_single=prop_single, prop_multi=prop_multi, prop_empty=prop_empty,
+                                            ax=ax,figsize=figsize, title=title, y_label=y_label, 
+                                            cm=cm, 
+                                            mark_best=mark_best, 
+                                            tight_layout=tight_layout,
+                                            **kwargs)
+    
+    elif y_true is not None and p_values is not None:
+        # Raw values
+        param_dict = {}
+        if x_label is not None:
+            param_dict['x_label'] = x_label
+        if sign_vals is not None:
+            # Prefer sign_values
+            param_dict['sign_vals'] = sign_vals
+        if conf_vals is not None and sign_vals is not None:
+            raise ValueError('`sign_vals` and `conf_vals` cannot be given at the same time')
+            param_dict['sign_vals'] = 1 - sign_vals # Convert to significance level
+        return __plot_label_distro_raw(y_true=y_true, p_values=p_values,
+                                       ax=ax,figsize=figsize, title=title, y_label=y_label, 
+                                       cm=cm, 
+                                       display_incorrect=display_incorrect, 
+                                       mark_best=mark_best, 
+                                       tight_layout=tight_layout,
+                                       **param_dict, **kwargs)
+    else:
+        raise ValueError('Label distribution plot require either `y_true` and `p_values` or `prop_single` and (`sign_vals`|`conf_vals`) parameters to be given')
+
+
+def __plot_label_distro_computed(
+        sign_vals = None,
+        prop_single = None,
+        conf_vals = None,
+        prop_multi = None,
+        prop_empty = None,
+        ax=None,
+        figsize=(10,8),
+        title=None,
+        x_label = None, # 'Significance' or 'Confidence' depending on `sign_vals` or `conf_vals` given
+        y_label = 'Label distribution',
+        cm=None,
+        mark_best=True,
+        tight_layout=True,
+        **kwargs):
+    """**Classification** - Create a stacked plot with label ratios
+    
+    Parameters
+    ----------
+   
+
+    ax : matplotlib Axes, optional
+        An existing matplotlib Axes to plot in (default None)
+
+    figsize : float or (float, float), optional
+        Figure size to generate, ignored if `ax` is given
+
+    title : str, optional
+        A title to add to the figure (default None)
+    
+    x_label,y_label : str, optional
+        Labels for the x and y axes. Defaults are given
+
+    sign_vals : list of float, default np.arange(0,1,0.01)
+        Significance values to use
+
+    cm : list of colors or ListedColorMap, optional
+        Colors to use, given in the order: [single, multi, empty]  
+
+    mark_best : boolean
+        Mark the best significance value with a line and textbox (default True)
+    
+    tight_layout : bool, optional
+        Set `tight_layout` on the matplotlib Figure object
+
+    **kwargs : dict, optional
+        Keyword arguments, passed to matplotlib
+    
+    Returns
+    -------
+    fig : Figure
+        matplotlib.figure.Figure object
+    """
+    # Validate only one of them given
+    if (sign_vals is None and conf_vals is None) or (sign_vals is not None and conf_vals is not None):
+        raise ValueError('Either sign_vals or conf_vals must be given (not both)')
+    
+    if sign_vals is not None:
+        xs = sign_vals
+        x_label = x_label if x_label is not None else 'Significance'
+    else:
+        xs = conf_vals
+        x_label = x_label if x_label is not None else 'Confidence'
+
+    # Set color-mapping
+    if cm is not None:
+        pal = list(cm)
+    else:
+        pal = [__default_single_label_color, __default_multi_label_color, __default_empty_prediction_color]
+
+
+    # Validate the x-values
+    validate_sign(xs)
+
+    # Validate format
+    check_consistent_length(xs,prop_single)
+    if prop_empty is not None:
+        check_consistent_length(xs,prop_empty)
+    if prop_multi is not None:
+        check_consistent_length(xs, prop_multi)
+    
+    ys = [prop_single]
+    labels = ['Single-label']
+    colors = [pal[0 % len(pal)]]
+
+    if prop_multi is not None:
+        ys.append(prop_multi)
+        labels.append('Multi-label')
+        colors.append(pal[1 % len(pal)])
+    if prop_empty is not None:
+        ys.append(prop_empty)
+        labels.append('Empty')
+        colors.append(pal[2 % len(pal)])
+    
+    fig, ax = get_fig_and_axis(ax, figsize)
+
+    ax.axis([np.min(xs),np.max(xs),0,1])
+
+    ax.stackplot(xs,
+                 ys,
+                 labels=labels,
+                 colors=colors,**kwargs) #
+    
+    if mark_best:
+        best_x = round(xs[np.argmax(prop_single)],3)
+        ax.plot([best_x,best_x],[0,1],'--k', alpha=0.75)
+        props = dict(boxstyle='round', facecolor='white', alpha=0.75)
+        ax.text(best_x+0.02, 0.1, str(best_x), bbox=props)
+    
+    ax.legend()
+    
+    _set_title(ax,title)
+    _set_label_if_not_set(ax,x_label,x_axis=True)
+    _set_label_if_not_set(ax,y_label,x_axis=False)
+    
+    if tight_layout:
+        fig.tight_layout()
+    
+    return fig
+
+
+def __plot_label_distro_raw(
+        y_true,
+        p_values,
+        ax=None,
+        figsize=(10,8),
+        title=None,
+        x_label = 'Significance',
+        y_label = 'Label distribution',
+        sign_vals=np.arange(0,1,0.01),
+        cm=None,
+        display_incorrect=False,
+        mark_best=True,
+        tight_layout=True,
+        **kwargs):
     """**Classification** - Create a stacked plot with label ratios
     
     Parameters
@@ -547,9 +789,9 @@ def plot_label_distribution(y_true,
 
     cm : list of colors or ListedColorMap, optional
         Colors to use, given in the order: [single, multi, empty, (incorrect-single), (incorrect-multi)]  
-        (if `display_incorrects`=True a list of at least 5 is required, otherwise 3 is sufficient)
+        (if `display_incorrect`=True a list of at least 5 is required, otherwise 3 is sufficient)
 
-    display_incorrects : boolean, optional
+    display_incorrect : boolean, optional
         Plot the incorrect predictions instead of only empty/single/multi-label predictions (default True)
 
     mark_best : boolean
@@ -592,7 +834,7 @@ def plot_label_distribution(y_true,
     for s in sign_vals:
         _, s_corr, s_incorr = frac_single_label_preds(y_true, p_values,s)
         _, m_corr, m_incorr = frac_multi_label_preds(y_true, p_values, s)
-        if display_incorrects:
+        if display_incorrect:
             s_l = s_corr
             m_l = m_corr
         else:
@@ -626,12 +868,12 @@ def plot_label_distribution(y_true,
 
     if not np.all(s_label == 0):
         ys.append(s_label)
-        if display_incorrects:
+        if display_incorrect:
             labels.append('Correct single-label')
         else:
             labels.append('Single-label')
         colors.append(pal[0 % len(pal)])
-    if display_incorrects and not np.all(si_label == 0):
+    if display_incorrect and not np.all(si_label == 0):
         ys.append(si_label)
         labels.append('Incorrect single-label')
         colors.append(pal[3 % len(pal)])
@@ -642,7 +884,7 @@ def plot_label_distribution(y_true,
         else:
             labels.append('Multi-label')
         colors.append(pal[1 % len(pal)])
-    if p_values.shape[1] > 2 and display_incorrects and not np.all(mi_label == 0):
+    if p_values.shape[1] > 2 and display_incorrect and not np.all(mi_label == 0):
         ys.append(mi_label)
         labels.append('Incorrect multi-label')
         colors.append(pal[4 % len(pal)])

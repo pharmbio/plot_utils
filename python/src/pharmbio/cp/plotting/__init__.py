@@ -10,4 +10,4 @@ from ._classification import *
 from ._regression import *
 
 # From the common stuff
-from ._common import update_plot_settings,plot_computed_calibration
+from ._common import update_plot_settings,plot_calibration

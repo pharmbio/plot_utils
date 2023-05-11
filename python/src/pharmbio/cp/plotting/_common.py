@@ -114,7 +114,7 @@ def add_calib_curve(ax,
 
     return (x_label,y_label)
 
-def plot_computed_calibration(sign_vals = None, 
+def plot_calibration(sign_vals = None, 
     error_rates = None, 
     error_rates_sd = None, 
     conf_vals = None,
@@ -162,7 +162,8 @@ def plot_computed_calibration(sign_vals = None,
         Standard deviations for the `accuracy_vals`, used for plotting `accuracy +/- SD` areas
 
     labels : list of str, optional
-        Descriptive labels for the input 
+        Descriptive labels for the input, for regression input it can be a single str, for classification
+        the number of columns in `error_rates` or `accuracy_vals` should match the number of labels
 
     ax : matplotlib Axes, optional
         An existing matplotlib Axes to plot in (default None)
