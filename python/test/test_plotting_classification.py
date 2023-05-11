@@ -126,25 +126,25 @@ class TestPValuesPlot(unittest.TestCase):
 class TestLabelDistributionPlot(unittest.TestCase):
 
     def test_2_class(self):
-        fig1 = plotting.plot_label_distribution(true_labels_2_class, p_values=p_vals_2_class)
+        fig1 = plotting.plot_label_distribution(y_true = true_labels_2_class, p_values=p_vals_2_class)
         fig1.axes[0].set_title('LabelDistribution 2-class')
         _save_clf(fig1,"TestLabelDistPlot.test_2_class")
     
     def test_3_class(self):
-        fig = plotting.plot_label_distribution(true_labels_3_class, p_values=p_vals_3_class)
+        fig = plotting.plot_label_distribution(y_true = true_labels_3_class, p_values=p_vals_3_class)
         fig.axes[0].set_title('LabelDistribution 3-class')
         _save_clf(fig,"TestLabelDistPlot.test_3_class")
 
 class TestCalibrationPlot(unittest.TestCase):
     def test_2_class(self):
-        fig1 = plotting.plot_calibration_curve(true_labels_2_class, p_values=p_vals_2_class)
+        fig1 = plotting.plot_calibration_clf(true_labels_2_class, p_vals_2_class)
         fig1.axes[0].set_title('Calib plot 2-class')
-        fig2 = plotting.plot_calibration_curve(true_labels_2_class, p_values=p_vals_2_class, labels = ['class 0', 'class 1'])
+        fig2 = plotting.plot_calibration_clf(true_labels_2_class, p_vals_2_class, labels = ['class 0', 'class 1'])
         fig2.axes[0].set_title('Calib plot 2-class with labels')
         _save_clf(fig2,"TestCalibPlot.test_2_class")
     
     def test_3_class(self):
-        fig = plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'])
+        fig = plotting.plot_calibration_clf(true_labels_3_class, p_vals_3_class, labels = ['A', 'B', 'C'])
         fig.axes[0].set_title('Calib plot 3-class, labels={A,B,C}')
         _save_clf(fig,"TestCalibPlot.test_3_class")
     
@@ -152,13 +152,13 @@ class TestCalibrationPlot(unittest.TestCase):
         # Plot all in one image
         fig, axes = plt.subplots(2,2,figsize=(10,10))
         # std
-        plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[0,0], title='std')
+        plotting.plot_calibration_clf(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[0,0], title='std')
         # flip x
-        plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[0,1], flip_x=True, title='flip x')
+        plotting.plot_calibration_clf(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[0,1], flip_x=True, title='flip x')
         # flip y
-        plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[1,0], flip_y=True, title='flip y')
+        plotting.plot_calibration_clf(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[1,0], flip_y=True, title='flip y')
         # flip both
-        plotting.plot_calibration_curve(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[1,1], flip_x=True, flip_y=True, title='both')
+        plotting.plot_calibration_clf(true_labels_3_class, p_values=p_vals_3_class, labels = ['A', 'B', 'C'], ax=axes[1,1], flip_x=True, flip_y=True, title='both')
         _save_clf(fig,"TestCalibPlot.test_3_class_flip")
 
 

@@ -9,7 +9,7 @@ from pharmbio.data import *
 class Test_regression(unittest.TestCase):
 
     def test_load(self):
-        (y,preds,signs) = load_regression('resources/pred_file_reg.csv','y')
+        (y,preds,signs) = load_regression('resources/cpsign_reg_predictions.csv','y')
         self.assertEqual(len(y), len(preds))
         self.assertEqual(preds.shape[2],len(signs))
         self.assertAlmostEqual(signs[0],1)
