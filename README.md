@@ -56,3 +56,12 @@ Add/finish the following plots:
  - [x] Add regression metrics
  - [x] Add plots regression
 
+
+### Change log:
+- **0.1.0**: 
+    * Added `pharmbio.cpsign` package with loading functionality for CPSign generated files, loading calibration statistics, efficiency statistics and predictions.
+    * Updated plotting functions in order to use pre-computed metrics where applicable (e.g. when computed by CPSign).
+    * Added possibility to add a shading for +/- standard deviation where applicable, e.g. calibration curve
+    * Updated calibration curve plotting to have a general `plotting.plot_calibration` acting on pre-computed values or for classification using `plotting.plot_calibration_clf` where true labels and p-values can be given.
+    * Update parameter order to make it consistent across plotting functions, e.g. ordered as x, y (significance vs error rate) in the plots. 
+    * Added a utility function for setting the seaborn theme and context using `plotting.update_plot_settings` which updates the matplotlib global settings. *Note* this will have effect on all other plots generated in the same python session if those rely on matplotlib. 
