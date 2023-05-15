@@ -72,7 +72,7 @@ class TestRegression(unittest.TestCase):
 
     def test_load_reg_calib(self):
         (signs,errs,errs_sd,labels) = load_calib_stats('resources/cpsign_reg_stats.csv', sep='\t')
-        fig = plotting.plot_calibration(sign_vals=signs,error_rates=errs[:,0], error_rates_sd=errs_sd[:,0], labels='Error rate', title='cpsign only overall calib')
+        fig = plotting.plot_calibration(sign_vals=signs,error_rates=errs, error_rates_sd=errs_sd, labels='Error rate', title='cpsign only overall calib')
         _save_reg(fig,"TestREG_CPSign.test_plot_calib")
 
     def test_load_reg_eff(self):

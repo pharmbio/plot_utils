@@ -597,7 +597,7 @@ def plot_label_distribution(
             raise ValueError('`display_incorrect` cannot be given for pre-computed values')
         # Computed values given
         # param_dict = {}
-        return __plot_label_distro_computed(sign_vals=sign_vals, conf_vals=conf_vals,
+        return _plot_label_distro_computed(sign_vals=sign_vals, conf_vals=conf_vals,
                                             prop_single=prop_single, prop_multi=prop_multi, prop_empty=prop_empty,
                                             ax=ax,figsize=figsize, title=title, y_label=y_label, 
                                             cm=cm, 
@@ -615,8 +615,8 @@ def plot_label_distribution(
             param_dict['sign_vals'] = sign_vals
         if conf_vals is not None and sign_vals is not None:
             raise ValueError('`sign_vals` and `conf_vals` cannot be given at the same time')
-            param_dict['sign_vals'] = 1 - sign_vals # Convert to significance level
-        return __plot_label_distro_raw(y_true=y_true, p_values=p_values,
+        
+        return _plot_label_distro_raw(y_true=y_true, p_values=p_values,
                                        ax=ax,figsize=figsize, title=title, y_label=y_label, 
                                        cm=cm, 
                                        display_incorrect=display_incorrect, 
@@ -627,7 +627,7 @@ def plot_label_distribution(
         raise ValueError('Label distribution plot require either `y_true` and `p_values` or `prop_single` and (`sign_vals`|`conf_vals`) parameters to be given')
 
 
-def __plot_label_distro_computed(
+def _plot_label_distro_computed(
         sign_vals = None,
         prop_single = None,
         conf_vals = None,
@@ -748,7 +748,7 @@ def __plot_label_distro_computed(
     return fig
 
 
-def __plot_label_distro_raw(
+def _plot_label_distro_raw(
         y_true,
         p_values,
         ax=None,

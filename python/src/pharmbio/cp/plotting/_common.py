@@ -239,13 +239,13 @@ def plot_calibration(sign_vals = None,
     if error_rates is not None:
         # Using error rate input
         y_lab = 'Accuracy' if flip_y else 'Error rate'
-        y_vals = 1 - to_numpy2D(error_rates,'error_rates', unravel=True) if flip_y else to_numpy2D(error_rates,'error_rates', unravel=True)
-        y_SD = None if error_rates_sd is None else to_numpy2D(error_rates_sd,'error_rates_sd', unravel=True)
+        y_vals = 1 - to_numpy2D(error_rates,'error_rates', unravel=True, min_num_cols=1) if flip_y else to_numpy2D(error_rates,'error_rates', unravel=True, min_num_cols=1)
+        y_SD = None if error_rates_sd is None else to_numpy2D(error_rates_sd,'error_rates_sd', unravel=True, min_num_cols=1)
     else:
         # Using accuracy input
         y_lab = 'Error rate' if flip_y else 'Accuracy'
-        y_vals = 1 - to_numpy2D(accuracy_vals,'accuracy_vals', unravel=True) if flip_y else to_numpy2D(accuracy_vals,'accuracy_vals', unravel=True)
-        y_SD = None if accuracy_sd is None else to_numpy2D(accuracy_sd,'accuracy_sd', unravel=True)
+        y_vals = 1 - to_numpy2D(accuracy_vals,'accuracy_vals', unravel=True, min_num_cols=1) if flip_y else to_numpy2D(accuracy_vals,'accuracy_vals', unravel=True, min_num_cols=1)
+        y_SD = None if accuracy_sd is None else to_numpy2D(accuracy_sd,'accuracy_sd', unravel=True, min_num_cols=1)
 
     # Create the figure and axis to plot in
     error_fig, ax = get_fig_and_axis(ax, figsize)
