@@ -2,14 +2,17 @@ import numpy as np
 import unittest
 import matplotlib.pyplot as plt
 
-import sys
-sys.path.append('../src')
+#import sys
+#sys.path.append('../src')
 from pharmbio.cp import metrics,plotting
-from test_utils import _save_reg
+from ....help_utils import _save_reg, get_resource
+from ....context import resource_dir
 
-boston_preds = np.load('resources/boston_pred_out_3D_169.npy')
-boston_preds_norm = np.load('resources/boston_pred_out_3D_169_normalized.npy')
-boston_labels = np.load('resources/boston_labels.npy')
+#print("resource-dir: ", resource_dir)
+
+boston_preds = np.load(get_resource('boston_pred_out_3D_169.npy'))
+boston_preds_norm = np.load(get_resource('boston_pred_out_3D_169_normalized.npy'))
+boston_labels = np.load(get_resource('boston_labels.npy'))
 # These are the ones nonconformist calculates
 significance_lvls = np.arange(0.01,1,0.01)
 

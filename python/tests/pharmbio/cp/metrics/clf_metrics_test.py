@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 import unittest
 
-import sys
-sys.path.append('../src')
+#from .context import pharmbio
+#import sys
+#sys.path.append('../src')
 from pharmbio.cp.metrics import *
 from statistics import mean 
 import time
+from ....help_utils import get_resource
 
 class TestConfusionMatrix(unittest.TestCase):
 
@@ -113,11 +115,11 @@ class TestConfusionMatrix(unittest.TestCase):
 class TestObservedMetrics(unittest.TestCase):
 
     def setUp(self):
-        raw_data = np.genfromtxt('resources/transporters.p-values.csv', delimiter=';', skip_header=1)
+        raw_data = np.genfromtxt(get_resource('transporters.p-values.csv'), delimiter=';', skip_header=1)
         self.true_labels = np.array([1 if x == 1.0 else 0 for x in raw_data[:,1]])
         self.p_values = raw_data[:,[2,3]]
 
-        multiclass_data = np.genfromtxt('resources/multiclass.csv', delimiter=',')
+        multiclass_data = np.genfromtxt(get_resource('multiclass.csv'), delimiter=',')
         self.m_p_values = multiclass_data[:,1:]
         self.m_true_labels = multiclass_data[:,:1].astype(int)
 
@@ -286,7 +288,7 @@ class TestUnobMetrics(unittest.TestCase):
             [0.65, 0.15, 0.05, 0.5]
         ])
         # Ulfs real-life data
-        raw_data = np.genfromtxt('resources/transporters.p-values.csv', delimiter=';', skip_header=1)
+        raw_data = np.genfromtxt(get_resource('transporters.p-values.csv'), delimiter=';', skip_header=1)
         self.p_values = raw_data[:,[2,3]]
 
     def test_single_label_preds(self):

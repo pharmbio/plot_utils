@@ -3,18 +3,22 @@ import pandas as pd
 import unittest
 import matplotlib.pyplot as plt
 from pharmbio.cp import metrics
+import os
 
 import pharmbio.cp.plotting._utils as plt_utils
 
-
+from .context import output_dir, resource_dir
 # Utility functions
+
+def get_resource(file_name:str)->str:
+    return os.path.join(resource_dir,file_name)
 
 def _save_reg(fig, test_func, close_after=True):
     test_func = test_func if test_func is not None and isinstance(test_func,str) else str(test_func)
     ax1 = fig.axes[0]
     ax1_orig_title = ax1.get_title()
     ax1.set_title(ax1_orig_title+":"+test_func)
-    fig.savefig('test_output/reg/'+test_func+".pdf", bbox_inches='tight')
+    fig.savefig(output_dir+'/reg/'+test_func+".pdf", bbox_inches='tight')
     ax1.set_title(ax1_orig_title)
     if close_after:
         plt.close(fig)
@@ -24,7 +28,7 @@ def _save_clf(fig, test_func, close_after=True):
     ax1 = fig.axes[0]
     ax1_orig_title = ax1.get_title()
     ax1.set_title(ax1_orig_title+":"+test_func)
-    fig.savefig('test_output/clf/'+test_func+".pdf", bbox_inches='tight')
+    fig.savefig(output_dir+'/clf/'+test_func+".pdf", bbox_inches='tight')
     ax1.set_title(ax1_orig_title)
     if close_after:
         plt.close(fig)
@@ -38,6 +42,7 @@ def assert_fig_wh(case, fig, w,h, ax):
     ax: Figure.Axes that should be part of the `fig` object
 
     """
+    
     case.assertEqual(w, fig.get_figwidth())
     case.assertEqual(h, fig.get_figheight())
     

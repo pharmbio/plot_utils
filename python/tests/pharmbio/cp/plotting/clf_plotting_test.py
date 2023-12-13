@@ -2,16 +2,12 @@ import numpy as np
 import unittest
 import matplotlib.pyplot as plt
 
-import sys
-
-from numpy.core.numeric import False_
-import scipy as sp
-sys.path.append('../src')
+#from numpy.core.numeric import False_
 from pharmbio.cp import metrics,plotting
-from test_utils import _save_clf
+from ....help_utils import _save_clf, get_resource
 
 # Some testing data - 2 class
-my_data = np.genfromtxt('resources/transporters.p-values.csv', delimiter=';', skip_header=1)
+my_data = np.genfromtxt(get_resource('transporters.p-values.csv'), delimiter=';', skip_header=1)
 true_labels_2_class = (my_data[:,1] == 1).astype(np.int16)
 p_vals_2_class = my_data[:,[2,3]]
 cm_2_class_015 = metrics.confusion_matrix( true_labels_2_class, p_vals_2_class, sign=0.15 )
@@ -19,14 +15,14 @@ cm_2_class_015_normalized = metrics.confusion_matrix( true_labels_2_class, p_val
 cm_2_class_075 = metrics.confusion_matrix( true_labels_2_class, p_vals_2_class, sign=0.75 )
 
 # 3 class
-data3class = np.genfromtxt('resources/multiclass.csv', delimiter=',', skip_header=0)
+data3class = np.genfromtxt(get_resource('multiclass.csv'), delimiter=',', skip_header=0)
 true_labels_3_class = data3class[:,0].astype(np.int16)
 p_vals_3_class = data3class[:,1:]
 cm_3_class_015 = metrics.confusion_matrix( true_labels_3_class, p_vals_3_class, sign=0.15 )
 # print(type(true_labels_3class))
 
 # hER predictions
-er_data = np.genfromtxt('resources/er.p-values.csv', delimiter=',', skip_header=1)
+er_data = np.genfromtxt(get_resource('er.p-values.csv'), delimiter=',', skip_header=1)
 er_labels = er_data[:,0].astype(np.int16)
 er_pvals = er_data[:,1:]
 

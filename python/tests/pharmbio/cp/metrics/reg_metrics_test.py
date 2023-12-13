@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 import unittest
 
-import sys
-sys.path.append('../src')
+from ....help_utils import get_resource
 from pharmbio.cp.metrics import *
 from statistics import mean 
 
@@ -57,7 +56,7 @@ class Test_pred_width(unittest.TestCase):
         self.assertTrue(equal_np_arrays([3.6, 4], median))
     
     def test_3d_boston(self):
-        boston_preds = np.load('resources/boston_pred_out_3D_169.npy')
+        boston_preds = np.load(get_resource('boston_pred_out_3D_169.npy'))
         self.assertEqual((169,2,99),boston_preds.shape)
         withs = pred_width(boston_preds)
         #print(withs)
@@ -66,8 +65,8 @@ class Test_pred_width(unittest.TestCase):
 class Test_frac_error_reg(unittest.TestCase):
 
     def test_boston(self):
-        boston_preds = np.load('resources/boston_pred_out_3D_169.npy')
-        boston_labels = np.load('resources/boston_labels.npy')
+        boston_preds = np.load(get_resource('boston_pred_out_3D_169.npy'))
+        boston_labels = np.load(get_resource('boston_labels.npy'))
         # Try 3D
         errs3d = frac_error_reg(boston_labels,boston_preds)
         #print(errs3d)
