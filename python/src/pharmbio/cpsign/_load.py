@@ -35,9 +35,9 @@ def load_calib_stats(f,
     Returns
     -------
     (sign_vals, error_rates, error_rates_SD, labels)
-        significance levels, error-rates, standard-deviations of error-rate (may be empty if not available in the file), labels
+        significance levels, error-rates, standard-deviations of error-rate (may be `None` if not available in the file), labels
         for those. For regression the "labels" will be a single label 'Overall' as there are no error rates per class. 
-        The error-rates and error-rate-SD are 2d matrices, where each column correspond to the same index in the labels-list
+        The error-rates and error-rate-SD are 2d ndarray, where each column correspond to the same index in the labels-list
 
     """
     # Convert to regex if not already given
@@ -55,6 +55,7 @@ def load_calib_stats(f,
     sd_labels = []
     accuracies = np.empty((n_rows,0))
     accuracies_sd = np.empty((n_rows,0))
+    overall_sd = None # fallback if no SD column is given
 
     for i, c in enumerate(df.columns):
         if __matches(overall_accuracy_regex,c):
@@ -91,7 +92,8 @@ def load_calib_stats(f,
 
 
 def load_reg_efficiency_stats(f, 
-                              sep=',',
+                              sep: str =',',
+                              skip_inf: bool = True,
                               median_regex = r'.*median.*prediction.*interval.*width.*(?<!_sd)$',
                               mean_regex = r'.*mean.*prediction.*interval.*width.*(?<!_sd)$',
                               median_sd_regex = r'.*median.*prediction.*interval.*width.*_sd$',
@@ -106,6 +108,10 @@ def load_reg_efficiency_stats(f,
 
     sep : column-separator, str, default ','
         Character that separate columns in the CSV
+    
+    skip_inf : bool, default True
+        If significance/confidence levels generate [-inf,inf] prediction intervals, filter
+        those out and only return the mean/median values with finite sizes.
 
     Returns
     -------
@@ -133,28 +139,41 @@ def load_reg_efficiency_stats(f,
 
     for i, c in enumerate(df.columns):
         if __matches(sign_regex, c):
-            sign_vals = df.iloc[:,i]
+            sign_vals = df.iloc[:,i].to_numpy()
         elif __matches(conf_regex,c):
-            conf_vals = df.iloc[:,i]
+            conf_vals = df.iloc[:,i].to_numpy()
         elif __matches(median_regex, c):
-            median_vals = df.iloc[:,i]
+            median_vals = df.iloc[:,i].to_numpy()
         elif __matches(mean_regex, c):
-            mean_vals = df.iloc[:,i]
+            mean_vals = df.iloc[:,i].to_numpy()
         elif __matches(median_sd_regex, c):
-            median_vals_sd = df.iloc[:,i]
+            median_vals_sd = df.iloc[:,i].to_numpy()
         elif __matches(mean_sd_regex, c):
-            mean_vals_sd = df.iloc[:,i]
+            mean_vals_sd = df.iloc[:,i].to_numpy()
     
     if sign_vals is None and conf_vals is None:
         raise ValueError('No significance or confidence levels given, invalid input')
 
     # Convert confidence levels into significance levels     
-    sign_vals = 1 - conf_vals.to_numpy() if sign_vals is None else sign_vals
-
+    sign_vals = 1 - conf_vals if sign_vals is None else sign_vals
+    
+    if skip_inf:
+        # enough to go through one of the matrices, the other ones should be -inf,inf as well
+        finite_values_mask = np.isfinite(mean_vals)
+        if not np.all(finite_values_mask):
+            # Only apply mask if any non-finite values found
+            sign_vals = sign_vals[finite_values_mask]
+            mean_vals = mean_vals[finite_values_mask]
+            median_vals = median_vals[finite_values_mask]
+            if median_vals_sd:
+                median_vals_sd = median_vals_sd[finite_values_mask]
+            if mean_vals_sd:
+                mean_vals_sd = mean_vals_sd[finite_values_mask]
+    
     if median_vals_sd is None and mean_vals_sd is None:
         return sign_vals, median_vals, mean_vals
     else:
-        return sign_vals,  median_vals, mean_vals, median_vals_sd, mean_vals_sd
+        return sign_vals, median_vals, mean_vals, median_vals_sd, mean_vals_sd
 
 def load_reg_predictions(f,
     y_true_col,
