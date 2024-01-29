@@ -1,24 +1,24 @@
 import numpy as np
 import pandas as pd
-import unittest
+import pytest
 
 from ....help_utils import get_resource
-from pharmbio.cp.metrics import *
+from pharmbio.cp.metrics import (pred_width,frac_error_reg)
 from statistics import mean 
 
-class Test_pred_width(unittest.TestCase):
+class Test_pred_width():
 
     def test_single_pred(self):
         pred = np.array([
             [0,1]
         ])
         m = pred_width(pred)
-        self.assertEqual(1,m)
+        assert 1 == m
 
         pred_2 = np.array([
             [-1.5,5.2]
         ])
-        self.assertAlmostEqual(1.5+5.2, pred_width(pred_2))
+        assert pytest.approx(1.5+5.2) == pred_width(pred_2)
 
     def test_two_pred(self):
         pred = np.array([
@@ -26,9 +26,9 @@ class Test_pred_width(unittest.TestCase):
             [3.5,9]
         ])
         # median
-        self.assertAlmostEqual(np.median([.5, 9-3.5]), pred_width(pred))
+        assert pytest.approx(np.median([.5, 9-3.5])) == pred_width(pred)
         # mean
-        self.assertAlmostEqual(np.mean([.5, 9-3.5]), pred_width(pred,median=False))
+        assert pytest.approx(np.mean([.5, 9-3.5])) == pred_width(pred,median=False)
 
     def test_3d_pred(self):
         # Create a (3,2,2) matrix (for two different significance levels)
@@ -47,22 +47,22 @@ class Test_pred_width(unittest.TestCase):
         
         # Stack them to 3D
         pred_3d = np.stack((pred_sig1,pred_sig2), axis=-1)
-        self.assertEqual((3,2,2), pred_3d.shape)
+        assert (3,2,2) == pred_3d.shape
         # first level:  np.mean([.5,9-3.5,8.7-5.1]) = 3.2, median = 3.6
         # second level: np.mean([1.5-.25,9.5-3,9-5]) = 3.9166667, median = 4
         median = pred_width(pred_3d, median=True)
         mean = pred_width(pred_3d, median=False)
-        self.assertTrue(equal_np_arrays([3.2, 3.9166667], mean))
-        self.assertTrue(equal_np_arrays([3.6, 4], median))
+        assert equal_np_arrays([3.2, 3.9166667], mean)
+        assert equal_np_arrays([3.6, 4], median)
     
     def test_3d_boston(self):
         boston_preds = np.load(get_resource('boston_pred_out_3D_169.npy'))
-        self.assertEqual((169,2,99),boston_preds.shape)
+        assert (169,2,99) == boston_preds.shape
         withs = pred_width(boston_preds)
         #print(withs)
-        self.assertEqual(len(withs),99)
+        assert len(withs) == 99
 
-class Test_frac_error_reg(unittest.TestCase):
+class Test_frac_error_reg():
 
     def test_boston(self):
         boston_preds = np.load(get_resource('boston_pred_out_3D_169.npy'))
@@ -74,7 +74,7 @@ class Test_frac_error_reg(unittest.TestCase):
         for i in range(boston_preds.shape[2]):
             errs2d = frac_error_reg(boston_labels,boston_preds[:,:,i])
             #print(errs2d)
-            self.assertAlmostEqual(errs2d,errs3d[i])
+            assert pytest.approx(errs2d) == errs3d[i]
             
 
 
@@ -82,6 +82,3 @@ def equal_np_arrays(arr1, arr2):
     if len(arr1) != len(arr2):
         return False
     return True if np.all((arr1 - arr2) < 0.000001) else False
-
-if __name__ == '__main__':
-    unittest.main()

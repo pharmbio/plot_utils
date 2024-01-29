@@ -1,8 +1,7 @@
 import numpy as np
-import unittest
+import pytest
 import matplotlib.pyplot as plt
 
-#from numpy.core.numeric import False_
 from pharmbio.cp import metrics,plotting
 from ....help_utils import _save_clf, get_resource
 
@@ -19,7 +18,6 @@ data3class = np.genfromtxt(get_resource('multiclass.csv'), delimiter=',', skip_h
 true_labels_3_class = data3class[:,0].astype(np.int16)
 p_vals_3_class = data3class[:,1:]
 cm_3_class_015 = metrics.confusion_matrix( true_labels_3_class, p_vals_3_class, sign=0.15 )
-# print(type(true_labels_3class))
 
 # hER predictions
 er_data = np.genfromtxt(get_resource('er.p-values.csv'), delimiter=',', skip_header=1)
@@ -27,7 +25,7 @@ er_labels = er_data[:,0].astype(np.int16)
 er_pvals = er_data[:,1:]
 
 
-class TestPValuesPlot(unittest.TestCase):
+class TestPValuesPlot():
     def test_2_class(self):
         fig = plotting.plot_pvalues(true_labels_2_class, p_values=p_vals_2_class)
         fig.axes[0].set_title('p0/p1 2-class')
@@ -56,7 +54,7 @@ class TestPValuesPlot(unittest.TestCase):
         _save_clf(fig,"TestPValuesPlot.test_3_class_only_send_2pvals")
     
     def test_cols_outside_range(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             plotting.plot_pvalues(true_labels_2_class, p_values=p_vals_2_class, cols=[2,1])
 
     def test_her(self):
@@ -119,7 +117,7 @@ class TestPValuesPlot(unittest.TestCase):
         _save_clf(rev_label_fig,"TestPValuesPlot.hER_all_rev_class")
 
 
-class TestLabelDistributionPlot(unittest.TestCase):
+class TestLabelDistributionPlot():
 
     def test_2_class(self):
         fig1 = plotting.plot_label_distribution(y_true = true_labels_2_class, p_values=p_vals_2_class)
@@ -131,7 +129,7 @@ class TestLabelDistributionPlot(unittest.TestCase):
         fig.axes[0].set_title('LabelDistribution 3-class')
         _save_clf(fig,"TestLabelDistPlot.test_3_class")
 
-class TestCalibrationPlot(unittest.TestCase):
+class TestCalibrationPlot():
     def test_2_class(self):
         fig1 = plotting.plot_calibration_clf(true_labels_2_class, p_vals_2_class)
         fig1.axes[0].set_title('Calib plot 2-class')
@@ -158,7 +156,7 @@ class TestCalibrationPlot(unittest.TestCase):
         _save_clf(fig,"TestCalibPlot.test_3_class_flip")
 
 
-class TestBubblePlot(unittest.TestCase):
+class TestBubblePlot():
     
     def test_3_class(self):
         fig1 = plotting.plot_confusion_matrix_bubbles(cm_3_class_015,color_scheme=None)
@@ -171,7 +169,7 @@ class TestBubblePlot(unittest.TestCase):
         _save_clf(fig2,"TestBubblebPlot.test_2_class_1_percentage")
 
         # Test without normalized CM
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _ = plotting.plot_confusion_matrix_bubbles(cm_2_class_015, annotate=True, annotate_as_percentage=True, figsize=(6,7))
     
     def test_2_class(self):
@@ -184,10 +182,10 @@ class TestBubblePlot(unittest.TestCase):
         _save_clf(fig3,"TestBubblebPlot.test_2_class_2")
     
     def test_illegal_color_scheme(self):
-        with self.assertWarns(UserWarning):
+        with pytest.warns(UserWarning):
             fig_ = plotting.plot_confusion_matrix_bubbles(cm_2_class_015, color_scheme='bad_arg', annotate=False, scale_factor=5.5, figsize=(6,7))
 
-class TestConfusionMatrixHeatmap(unittest.TestCase):
+class TestConfusionMatrixHeatmap():
 
     def test_3_class(self):
         fig1 = plotting.plot_confusion_matrix_heatmap(cm_3_class_015)
@@ -202,11 +200,8 @@ class TestConfusionMatrixHeatmap(unittest.TestCase):
         fig3.axes[0].set_title('Heatmap 2-class 0.75')
         _save_clf(fig3,"TestConfMatrixHeatMap.test_2_class_2")
 
-class FinalTest(unittest.TestCase):
+class FinalTest():
 
     def display_plots(self):
         plt.show()
 
-
-if __name__ == '__main__':
-    unittest.main()

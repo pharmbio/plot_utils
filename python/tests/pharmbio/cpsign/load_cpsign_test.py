@@ -21,12 +21,11 @@ class TestClassification():
     # update plot-settings
     plotting.update_plot_settings()
     
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def load_data(self):
         (self.signs, self.errs, self.errs_sd, self.labels) = cpsign.load_calib_stats(get_resource(clf_stats_file), sep='\t')
       
         
-    @pytest.fixture
     def test_load_stats_file(self,load_data):
 
         # plot and save it
@@ -45,7 +44,7 @@ class TestClassification():
                                                 flip_x=True,flip_y=True,title='precomputed from CPSign - flipped')
         _save_clf(fig_flipped,"CPSign_computed_clf.test_load_stats_file_3")
     
-    @pytest.fixture
+
     def test_load_stats_file_conf_acc(self, load_data):
         # convert to confidence and accuracy instead 
         confs = 1- self.signs
@@ -60,13 +59,13 @@ class TestClassification():
         fig_no_label.axes[0].set_title('from CPSign - no labels')
         _save_clf(fig_no_label,"CPSign_computed_clf.test_load_stats_file_conf_acc_2")
     
-    @pytest.fixture
+
     def test_plot_single_calib_line(self, load_data):
         assert self.labels[0].lower() == 'overall'
         fig = plotting.plot_calibration(sign_vals=self.signs,error_rates=self.errs[:,0], error_rates_sd=self.errs_sd[:,0], labels=self.labels[0], title='cpsign only overall calib')
         _save_clf(fig,"TestCLF_CPSign.test_plot_single_calib_line")
 
-    @pytest.fixture
+
     def test_load_stats_label_eff(self, load_data):
         (signs,single,multi,empty, _,_,_) = cpsign.load_clf_efficiency_stats(get_resource(clf_stats_file), sep='\t')
         # Explicitly turn of reading of SD values
@@ -111,7 +110,3 @@ class TestRegression():
         # With std
         fig_std = plotting.plot_pred_widths(sign_vals,median_widths, median_widths_sd)
         _save_reg(fig_std, "TestREG_CPSign.test_plot_widths_std")
-
-
-# if __name__ == '__main__':
-#     unittest.main()

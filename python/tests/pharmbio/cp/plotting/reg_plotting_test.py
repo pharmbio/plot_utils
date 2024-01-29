@@ -1,14 +1,10 @@
 import numpy as np
-import unittest
+import pytest
 import matplotlib.pyplot as plt
 
-#import sys
-#sys.path.append('../src')
 from pharmbio.cp import metrics,plotting
 from ....help_utils import _save_reg, get_resource
 from ....context import resource_dir
-
-#print("resource-dir: ", resource_dir)
 
 boston_preds = np.load(get_resource('boston_pred_out_3D_169.npy'))
 boston_preds_norm = np.load(get_resource('boston_pred_out_3D_169_normalized.npy'))
@@ -16,7 +12,7 @@ boston_labels = np.load(get_resource('boston_labels.npy'))
 # These are the ones nonconformist calculates
 significance_lvls = np.arange(0.01,1,0.01)
 
-class Test_calib_plot(unittest.TestCase):
+class Test_calib_plot():
 
     def test_boston(self):
         error_rates = metrics.frac_error_reg(boston_labels,boston_preds)
@@ -39,7 +35,7 @@ class Test_calib_plot(unittest.TestCase):
         _save_reg(fig,"Test_calib_plot.test_boston_flippin")
 
 
-class Test_pred_width(unittest.TestCase):
+class Test_pred_width():
 
     def test_boston(self):
         pred_widths = metrics.pred_width(boston_preds)
@@ -63,7 +59,7 @@ class Test_pred_width(unittest.TestCase):
         _save_reg(fig,"Test_pred_width.test_boston_flippin'")
     
 
-class Test_pred_intervals(unittest.TestCase):
+class Test_pred_intervals():
 
     def test_boston(self):
         fig = plotting.plot_pred_intervals(boston_labels,
@@ -98,5 +94,3 @@ class Test_pred_intervals(unittest.TestCase):
         fig.get_axes()[0].legend(loc='upper left')
         _save_reg(fig,"Test_pred_width:test_boston_gray")
 
-if __name__ == '__main__':
-    unittest.main()
