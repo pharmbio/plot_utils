@@ -99,7 +99,7 @@ class TestRegression():
     def test_load_reg_calib_2(self):
         (signs,errs,errs_sd,labels) = cpsign.load_calib_stats(get_resource(reg_stats_2_file), sep='\t')
         self.assert_label_output(labels) 
-        print("cpsign-reg2: ",signs,errs,errs_sd,labels)
+        # print("cpsign-reg2: ",signs,errs,errs_sd,labels)
         fig = plotting.plot_calibration(sign_vals=signs,error_rates=errs, error_rates_sd=errs_sd, labels='Error rate', title='cpsign only overall calib')
         _save_reg(fig,"TestREG_CPSign.test_plot_calib_2")
 

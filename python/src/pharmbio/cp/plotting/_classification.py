@@ -994,11 +994,13 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     
     x_coords = []
     y_coords = []
-    sizes = confusion_matrix.to_numpy().ravel(order='F')
-    n_rows = confusion_matrix.shape[0]
-    for x in confusion_matrix.columns:
-        x_coords.extend([x]*n_rows)
-        y_coords.extend(confusion_matrix.index)
+    sizes = []
+    for col, column in enumerate(confusion_matrix.columns):
+        for row, index in enumerate(confusion_matrix.index):
+            x_coords.append(col)
+            y_coords.append(row)
+            sizes.append(confusion_matrix.loc[index, column])
+    sizes = np.asarray(sizes)
     
     # Set the colors
     colors = None
@@ -1043,6 +1045,9 @@ def plot_confusion_matrix_bubbles(confusion_matrix,
     sizes_scaled = scale_factor * 2500 * sizes / sizes.max() 
     
     ax.scatter(x_coords, y_coords, s=sizes_scaled, c=colors, edgecolors='black', **kwargs)
+    # Create correct ticks
+    ax.set_xticks(range(confusion_matrix.shape[1]), confusion_matrix.columns)
+    ax.set_yticks(range(confusion_matrix.shape[0]), confusion_matrix.index)
 
     ax.margins(.3)
     ax.set(xlabel='Observed', ylabel='Predicted')
