@@ -19,7 +19,7 @@ The code internally use numpy ndarrays for matrices and vectors, but tries to be
 Internally this library requires [matplotlib](https://matplotlib.org/) and (optionally) [Seaborn](https://seaborn.pydata.org/). Only the `plot_confusion_matrix_heatmap` has a hard requirement for seaborn to be available, otherwise this library only interacts with the matplotlib classes and use the seaborn-settings for generating somewhat nicer plots (in our opinion). Styling and colors can always be changed through the matplotlib API. 
 
 ### Data loading - regression
-To simplify loading and conversions of data the plot_utils library now has some utility functions for loading CSV files into the apropriate format for regression predictions. These follow the format used in [nonconformist](https://github.com/donlnz/nonconformist), using 2D or 3D tensors in numpy ndarrays of shape `(num_examples,2)` or `(num_examples,2,num_significance_levels)`, where the second dimension contains the lower and upper limits of the prediction intervals.
+To simplify loading and conversions of data the plot_utils library now has some utility functions for loading CSV files into the appropriate format for regression predictions. These follow the format used in [nonconformist](https://github.com/donlnz/nonconformist), using 2D or 3D tensors in numpy ndarrays of shape `(num_examples,2)` or `(num_examples,2,num_significance_levels)`, where the second dimension contains the lower and upper limits of the prediction intervals.
 
 
 ## Supported plots
@@ -42,8 +42,9 @@ To use this package you clone this repo and add the `<base-path>/python/src/` di
 We should aim at supplying proper docstrings, following the [numpy docstring guide](https://numpydoc.readthedocs.io/en/latest/format.html).
 
 ### Testing
-All python-tests are located in the [test folder](python/test), they can either be run individually using
-`python <test_script>` or runned as a suite using the `./run_tests.sh`. Note that the plotting tests generate images that are saved in [test_output](python/test/test_output) directory and these should be checked manually (no good way of automating plotting-tests).
+All python-tests are located in the [tests folder](python/tests) and are meant to be run using [pytest](https://docs.pytest.org). Test should be started from standing in the `python` folder and can be run "all at once" (`python -m pytest`), "per file" (`python -m pytest tests/pharmbio/cp/metrics/clf_metrics_test.py`), or a single test function (`python -m pytest tests/pharmbio/cp/metrics/clf_metrics_test.py::TestConfusionMatrix::test_with_custom_labels`). 
+- **Note1:** The invocation `python -m pytest [opt args]` is preferred here as the current directory is added to the python path and resolves the application code automatically. Simply running `pytest` requires manual setup of the `PYTHONPATH` instead.
+- **Note2:** The plotting tests generate images that are saved in the [test_output](python/tests/test_output) directory and these should be checked manually (no good way of automating plotting-tests).
 
 ### TODOs:
 
