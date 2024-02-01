@@ -16,7 +16,7 @@ def load_calib_stats(f,
                      accuracy_sd_regex = r'^accuracy\((.*?)\)_SD$'
                      ):
     """
-    Read a CSV formatted file with calibration statistics (e.g. from CPSign)
+    Read a CSV formatted file with calibration statistics from CPSign
 
     Requires that the first column contains confidence levels and the accuracy values are picked out
     given the regex parameters. Depending on if there are standard-deviations given the output tuple will
@@ -176,11 +176,12 @@ def load_reg_efficiency_stats(f,
         return sign_vals, median_vals, mean_vals, median_vals_sd, mean_vals_sd
 
 def load_reg_predictions(f,
-    y_true_col,
-    sep = ',',
+    y_true_col = None,
+    sep:str = ',',
+    skip_inf: bool = True,
     lower_regex=r'^prediction.*interval.*lower.*\d+',
     upper_regex=r'^prediction.*interval.*upper.*\d+',
-    specifies_significance=None):
+    specifies_significance: bool = None):
     """Loads a CSV file with predictions and converts to the format used by Plot_utils
 
     The required format is that the csv has;
@@ -195,17 +196,23 @@ def load_reg_predictions(f,
     f : str or buffer
         File path or buffer that `Pandas.read_csv` can read
     
-    y_true_col : str or None
+    y_true_col : str or `None`, default `None`
         The (case insensitive) column header of the true labels, or None if it should not be loaded
     
     sep : str, default ','
         Delimiter that is used in the CSV between columns
     
+    skip_inf : bool, default `True`
+        Specifies if prediction intervals that are [-Inf,Inf] should be filtered out, i.e. when a 
+        too high confidence has been specified. 
+    
     lower_regex, upper_regex : str or re.Pattern
         Regex used for finding columns of the lower and upper interval limits. Must match the column headers
     
     specifies_significance : bool or None, default None
-        If the numbers in the headers are significance level (True) or confidence (False). If None, the first column-header found by `lower_regex` will be used to check for occurrences of 'significance' or 'conf' to try to infer what is used
+        If the numbers in the headers are significance level (True) or confidence (False). If None, 
+        the first column-header found by `lower_regex` will be used to check for occurrences of 
+        'significance' or 'conf' to try to infer what is used
 
     Returns
     -------
@@ -214,7 +221,7 @@ def load_reg_predictions(f,
 
     lower_regex = __get_regex_or_None(lower_regex)
     upper_regex = __get_regex_or_None(upper_regex)
-    num_pattern = re.compile('\d*\.\d*')
+    num_pattern = re.compile(r'\d*\.\d*')
     y_col_lc = None if y_true_col is None else y_true_col.lower()
     y_true_ind = None
     
@@ -235,7 +242,7 @@ def load_reg_predictions(f,
     assert len(low_ind) == len(upp_ind)
     if not isinstance(specifies_significance,bool):
         col_lc = df.columns[low_ind[0]].lower()
-        contains_sign =col_lc.__contains__('significance')
+        contains_sign = col_lc.__contains__('significance')
         contains_conf = col_lc.__contains__('confidence')
 
         if (contains_sign and contains_conf) or (not contains_sign and not contains_conf):
@@ -246,6 +253,15 @@ def load_reg_predictions(f,
     sign_vals = np.array(sign_low) if specifies_significance else 1 - np.array(sign_low)
     
     y, p = convert_regression(df,y_true_ind,low_ind,upp_ind)
+    
+    if skip_inf:
+        # Filter out potential -Inf,Inf intervals in the predictions
+        inf_mask = np.isinf(p[0,0,:])
+        if np.any(inf_mask):
+            # Only change things in case there are any inf values
+            p = p[:,:,~inf_mask]
+            sign_vals = sign_vals[~inf_mask]
+    
     return y, p, sign_vals
 
 

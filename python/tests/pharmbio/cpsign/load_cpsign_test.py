@@ -12,6 +12,7 @@ clf_stats_file = 'cpsign_clf_stats.csv'
 clf_predictions_file = 'cpsign_clf_predictions.csv'
 reg_stats_file = 'cpsign_reg_stats.csv'
 reg_stats_2_file = 'cpsign_reg_stats_2.csv'
+reg_pred_incl_infs_file = 'cpsign_reg_predictions_10_incl_inf.csv'
 
 
 
@@ -110,3 +111,19 @@ class TestRegression():
         # With std
         fig_std = plotting.plot_pred_widths(sign_vals,median_widths, median_widths_sd)
         _save_reg(fig_std, "TestREG_CPSign.test_plot_widths_std")
+        
+    def test_load_cpsign_preds(self):
+        # Load predictions and exclude inf values
+        (y, pred_matrix, sign_values) = cpsign.load_reg_predictions(get_resource(reg_pred_incl_infs_file),y_true_col='solubility', sep='\t', skip_inf=True)
+        # Load predictions and include inf values
+        (y_incl, pred_matrix_incl, sign_values_incl) = cpsign.load_reg_predictions(get_resource(reg_pred_incl_infs_file),y_true_col='solubility', sep='\t', skip_inf=False)
+        
+        assert np.all(y == y_incl)
+        # Should be as many predictions (i.e. two first dimensions)
+        assert len(pred_matrix) == len(pred_matrix_incl)
+        assert pred_matrix.shape[1] == 2 and pred_matrix_incl.shape[1] == 2
+        # The one with including inf values should have some inf values
+        assert np.any(np.isinf(pred_matrix_incl))
+        assert not np.any(np.isinf(pred_matrix))
+        assert len(sign_values) == pred_matrix.shape[2]
+        assert len(sign_values_incl) == pred_matrix_incl.shape[2]
