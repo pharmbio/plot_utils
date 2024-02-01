@@ -112,6 +112,24 @@ class TestRegression():
         fig_std = plotting.plot_pred_widths(sign_vals,median_widths, median_widths_sd)
         _save_reg(fig_std, "TestREG_CPSign.test_plot_widths_std")
         
+        # check the skip_inf 
+        (sign_vals, median_widths, mean_widths) = cpsign.load_reg_efficiency_stats(get_resource(reg_stats_2_file), sep='\t', skip_inf=True)
+        assert np.allclose(np.sort(sign_vals), [.2, 0.3])
+        assert len(median_widths) == 2
+        assert len(mean_widths) == 2
+        # Check the values (relies on order of sign_vals)
+        assert np.isclose(4.9, mean_widths[0])
+        assert np.isclose(26.9, mean_widths[1])
+        
+        (sign_vals_incl, median_widths_incl, mean_widths_incl) = cpsign.load_reg_efficiency_stats(get_resource(reg_stats_2_file), sep='\t', skip_inf=False)
+        assert np.allclose(np.sort(sign_vals_incl), [0, 0.05, 0.1, 0.2, 0.3])
+        assert len(median_widths_incl) == 5 and np.any(np.isposinf(median_widths_incl))
+        assert len(mean_widths_incl) == 5 and np.any(np.isposinf(mean_widths_incl))
+        # Check the values (relies on order of sign_vals_incl)
+        assert np.isclose(4.49, median_widths_incl[0])
+        assert np.isclose(27.2, median_widths_incl[1])
+        
+        
     def test_load_cpsign_preds(self):
         # Load predictions and exclude inf values
         (y, pred_matrix, sign_values) = cpsign.load_reg_predictions(get_resource(reg_pred_incl_infs_file),y_true_col='solubility', sep='\t', skip_inf=True)

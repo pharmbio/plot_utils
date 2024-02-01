@@ -177,7 +177,7 @@ def load_reg_efficiency_stats(f,
 
 def load_reg_predictions(f,
     y_true_col = None,
-    sep:str = ',',
+    sep: str = ',',
     skip_inf: bool = True,
     lower_regex=r'^prediction.*interval.*lower.*\d+',
     upper_regex=r'^prediction.*interval.*upper.*\d+',
