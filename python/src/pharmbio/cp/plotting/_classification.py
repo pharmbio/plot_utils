@@ -1103,7 +1103,7 @@ def plot_confusion_matrix_heatmap(confusion_matrix,
         Colormap to use for the heatmap, argument passed to Seaborn heatmap
 
     cbar_kws : dict, optional
-        Arguments passed to the color-bar element
+        Arguments passed to the color bar element
     
     tight_layout : bool, optional
         Set `tight_layout` on the matplotlib Figure object
