@@ -1,6 +1,4 @@
-from numpy.lib.arraysetops import isin
 from sklearn.preprocessing import OneHotEncoder
-# from os import sendfile
 import numpy as np
 import pandas as pd
 
@@ -60,24 +58,34 @@ def get_str_labels(labels, n_class):
 def validate_sign(sign):
     """Validate that `sign` is within [0,1] or raise error
 
-    Checks both the type and the range of the input `sign`
+    Checks both the type and content are OK. If numpy.ndarray the array must be 1dim
 
     Parameters
     ----------
-    sign : int or float
+    sign : int, float, numpy.ndarray, pandas.Series
         The significance level to check
     """
-    if isinstance(sign, np.ndarray):
-        if not np.any((0<=sign) | (sign <=0)):
-            raise ValueError('All significance levels must be in the range [0..1]')
-    elif isinstance(sign, list):
+    if isinstance(sign, np.ndarray) and sign.ndim == 0:
+        # This is a single element, convert to float
+        sign = float(sign)
+    
+    if isinstance(sign, (np.ndarray,pd.Series, list, tuple)):
+        # Check that ndarray is 1dim
+        if isinstance(sign, np.ndarray):
+            # must be dim == 1  
+            if sign.ndim != 1 :
+                raise ValueError('Significance levels must be given as a single value or an array / 1dim ndarray')
+        # validate each value
         for s in sign:
             if s < 0 or s >1:
-                raise ValueError('All significance levels must be in the range [0..1], got: {}'.format(s))
-    elif not isinstance(sign, (int,float)):
-        raise TypeError('parameter sign must be a number')
-    elif sign < 0 or sign >1:
-        raise ValueError('parameter sign must be in the range [0,1]')
+                raise ValueError('All significance levels must be in the range [0..1], got: {}'.format(s))   
+    elif isinstance(sign, (int,float)):
+        # I.e. a single value
+        if sign < 0 or sign >1:
+            # Single value but which is outside 
+            raise ValueError('parameter sign must be in the range [0,1]')
+    else:
+        raise TypeError('parameter sign must be a number or sequence of numbers')
 
 def to_numpy2D(input, param_name, min_num_cols=2, return_copy=True, unravel=False):
     """ Converts python list-based matrices and Pandas DataFrames into numpy 2D arrays
@@ -100,7 +108,7 @@ def to_numpy2D(input, param_name, min_num_cols=2, return_copy=True, unravel=Fals
             raise ValueError('parameter {} must be a 2D matrix, was a ndarray of shape {}'.format(param_name,input.shape))
         matrix = input.copy() if return_copy else input 
     else:
-        raise ValueError('parameter {} in unsupported format: {}'.format(param_name,type(input)))
+        raise TypeError('parameter {} in unsupported format: {}'.format(param_name,type(input)))
     # Validate at least min num columns present
     if len(matrix.shape) < 2 or matrix.shape[1] < min_num_cols:
         raise ValueError('parameter {} must be a matrix with at least {} columns'.format(param_name, min_num_cols))
