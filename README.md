@@ -4,7 +4,9 @@ Plotting library for conformal prediction metrics, intended to facilitate fast t
 ## Examples
 Example usage can be found in the [User Guide Classification notebook](python/examples/User_guide_classification.ipynb), [User Guide Regression notebook](python/examples/User_guide_regression.ipynb) and [Nonconformist+plot_utils notebook](python/examples/Nonconformist_and_plot_utils.ipynb).
 
-## Dependencies
+## Package dependencies
+See [requirements.txt](python/requirements.txt) for package dependencies used in our development. Here are links to the libraries:
+
 - [matplotlib](https://matplotlib.org/)
 - [Numpy](https://numpy.org/)
 - [Pandas](https://pandas.pydata.org/)
@@ -16,10 +18,10 @@ Example usage can be found in the [User Guide Classification notebook](python/ex
 The code internally use numpy ndarrays for matrices and vectors, but tries to be agnostic about input being either list, arrays or Pandas equivalents. But for performance reasons it is recommended that conversion to numpy format is done when using several of the methods in this library, as a new conversion would be performed for each function call.
 
 ### Rendering backends
-Internally this library requires [matplotlib](https://matplotlib.org/) and (optionally) [Seaborn](https://seaborn.pydata.org/). Only the `plot_confusion_matrix_heatmap` has a hard requirement for seaborn to be available, otherwise this library only interacts with the matplotlib classes and use the seaborn-settings for generating somewhat nicer plots (in our opinion). Styling and colors can always be changed through the matplotlib API. 
+Internally this library requires [matplotlib](https://matplotlib.org/) and (optionally) [Seaborn](https://seaborn.pydata.org/). Only the `plot_confusion_matrix_heatmap` has a hard requirement for seaborn to be available, otherwise this library only interacts with the matplotlib classes/functions and use seaborn-settings for generating somewhat nicer plots (in our opinion). Styling and colors can always be changed through the matplotlib API. 
 
-### Data loading - regression
-To simplify loading and conversions of data the plot_utils library now has some utility functions for loading CSV files into the appropriate format for regression predictions. These follow the format used in [nonconformist](https://github.com/donlnz/nonconformist), using 2D or 3D tensors in numpy ndarrays of shape `(num_examples,2)` or `(num_examples,2,num_significance_levels)`, where the second dimension contains the lower and upper limits of the prediction intervals.
+### Data loading 
+To simplify loading and conversions of data the `plot_utils` library now has some utility functions for loading CSV files with predictions or validation metrics (typically generated using [CPSign](https://github.com/arosbio/cpsign). For regression we require predictions to be the same as used in [nonconformist](https://github.com/donlnz/nonconformist), using 2D or 3D tensors in numpy ndarrays of shape `(num_examples,2)` or `(num_examples,2,num_significance_levels)`, where the second dimension contains the lower and upper limits of the prediction intervals.
 
 
 ## Supported plots
